@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+jinja2
+python-dotenv
+pydantic
+langchain-ollama
+starlette
+python-multipart
+earthengine-api
+geopy
+google-auth
+itsdangerous
+requests
+typing-extensions
