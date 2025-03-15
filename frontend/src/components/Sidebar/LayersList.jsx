@@ -36,19 +36,21 @@ const LayersList = ({ showNotification }) => {
       {layers.map(layer => {
         const isVisible = layer.visibility !== 'none';
         return (
-          <li key={layer.id} className="layer-item">
+          <li key={layer.id} className="bg-gray-800/30 p-2 rounded-md hover:bg-gray-700/30 transition-colors">
             <div className="flex justify-between items-center">
-              <span className="text-sm">{formatLayerLabel(layer)}</span>
-              <div className="flex">
+              <span className="text-sm text-gray-200">{formatLayerLabel(layer)}</span>
+              <div className="flex space-x-1">
                 <button 
-                  className="layer-control-button"
+                  className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50"
                   onClick={() => handleToggleVisibility(layer.id)}
+                  title={isVisible ? "Hide layer" : "Show layer"}
                 >
                   {isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
                 <button 
-                  className="layer-control-button" 
+                  className="p-1 rounded-md text-gray-400 hover:text-red-400 hover:bg-gray-700/50" 
                   onClick={() => handleDeleteLayer(layer.id)}
+                  title="Delete layer"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -64,7 +66,7 @@ const LayersList = ({ showNotification }) => {
                   max="1" 
                   step="0.1" 
                   defaultValue={layer.opacity || 0.8}
-                  className="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                   onChange={(e) => handleOpacityChange(layer.id, parseFloat(e.target.value))}
                 />
               </div>
