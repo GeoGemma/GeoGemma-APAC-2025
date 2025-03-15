@@ -1,18 +1,64 @@
+# version: '3.8'
+
+# services:
+#   app:
+#     build: .
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - .:/app
+#     environment:
+#       - EE_PROJECT_ID=${EE_PROJECT_ID}
+#       - SECRET_KEY=${SECRET_KEY:-default_secret_key_for_dev}
+#       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+#     depends_on:
+#       - ollama
+#     restart: unless-stopped
+
+#   ollama:
+#     image: ollama/ollama:latest
+#     volumes:
+#       - ollama_data:/root/.ollama
+#     ports:
+#       - "11434:11434"
+#     restart: unless-stopped
+
+# volumes:
+#   ollama_data:
+
+
+
 version: '3.8'
 
 services:
-  app:
-    build: .
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - geogemma-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./backend:/app
     environment:
       - EE_PROJECT_ID=${EE_PROJECT_ID}
       - SECRET_KEY=${SECRET_KEY:-default_secret_key_for_dev}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
     depends_on:
       - ollama
+    networks:
+      - geogemma-network
     restart: unless-stopped
 
   ollama:
@@ -21,7 +67,13 @@ services:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
+    networks:
+      - geogemma-network
     restart: unless-stopped
+
+networks:
+  geogemma-network:
+    driver: bridge
 
 volumes:
   ollama_data:

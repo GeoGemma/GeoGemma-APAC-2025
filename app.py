@@ -38,13 +38,26 @@ app = FastAPI(
 )
 
 # Middleware
+# Update CORS configuration in app.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative React dev server
+        "http://localhost",       # Production when served from Nginx
+        "http://frontend",        # Docker service name
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "a-very-secret-key"),

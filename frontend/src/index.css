@@ -1,0 +1,121 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background-dark text-white overflow-hidden;
+  }
+}
+
+@layer components {
+  .map-container {
+    @apply h-screen w-full;
+  }
+  
+  .sidebar-icon {
+    @apply p-3 text-white cursor-pointer text-xl mb-3 transition-all rounded-md w-10 h-10 flex items-center justify-center shadow-md hover:bg-white/15 hover:-translate-y-0.5;
+  }
+  
+  .sidebar-icon.active {
+    @apply bg-primary/80;
+  }
+  
+  /* .prompt-input {
+    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:shadow-outline;
+  } */
+
+  .prompt-input {
+    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:ring-2 focus:ring-primary/50;
+  }
+  
+  .prompt-button {
+    @apply p-3 bg-primary text-white border-none rounded cursor-pointer text-base flex items-center justify-center ml-1 transition-all hover:bg-primary-dark active:scale-95;
+  }
+  
+  .layer-item {
+    @apply my-2 p-2 bg-white/10 rounded transition-colors hover:bg-white/20;
+  }
+  
+  .layer-control-button {
+    @apply bg-transparent border-none cursor-pointer text-white transition-transform hover:scale-110 hover:opacity-80 w-6 h-6 flex items-center justify-center ml-1;
+  }
+}
+
+/* Custom Scrollbar */
+@layer utilities {
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* MapLibre Overrides */
+.maplibregl-ctrl button {
+  @apply w-8 h-8;
+}
+
+.maplibregl-ctrl-group {
+  @apply bg-background-sidebar !important;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl button {
+  @apply bg-transparent border-none text-white !important;
+}
+
+.maplibregl-ctrl button:hover {
+  @apply bg-white/15 !important;
+}
+
+.maplibregl-ctrl button.active {
+  @apply bg-primary/80 !important;
+}
+
+.maplibregl-popup-content {
+  @apply bg-background-sidebar/90 text-white !important;
+}
+
+.maplibregl-popup-close-button {
+  @apply text-white !important;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}

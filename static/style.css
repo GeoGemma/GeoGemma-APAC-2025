@@ -1,5 +1,5 @@
 /* General Styles */
-body {
+/* body {
     font-family: sans-serif;
     margin: 0;
     background-color: #121212;
@@ -20,7 +20,7 @@ body {
 }
 
 /* Notification System */
-#notification {
+/* #notification {
     position: absolute;
     bottom: 80px;
     left: 50%;
@@ -35,10 +35,10 @@ body {
     max-width: 80%;
     text-align: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
+}  */
 
 /* Prompt Container */
-.prompt-container {
+/* .prompt-container {
     position: absolute;
     bottom: 20px;
     left: 50%;
@@ -102,7 +102,7 @@ body {
 }
 
 /* Sidebar Styles */
-.sidebar {
+/* .sidebar {
     position: absolute;
     top: 0;
     left: 0;
@@ -176,10 +176,10 @@ body {
     white-space: nowrap;
     z-index: 4;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
+}  */
 
 /* Layer Management */
-.sidebar-layer-list {
+/* .sidebar-layer-list {
     background-color: rgba(0, 0, 0, 0.5);
     border-radius: 5px;
     margin: 0 10px;
@@ -275,20 +275,20 @@ body {
     background: #4361ee;
     cursor: pointer;
     border: none;
-}
+} */
 
 /* Clear Layers Button */
-#clear-layers-btn {
+/* #clear-layers-btn {
     background-color: rgba(220, 53, 69, 0.3);
     margin-top: 20px;
 }
 
 #clear-layers-btn:hover {
     background-color: rgba(220, 53, 69, 0.5);
-}
+} */
 
 /* Status Indicator */
-#status-indicator {
+/* #status-indicator {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -301,10 +301,10 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     text-align: center;
     display: none;
-}
+} */
 
 /* Map Controls */
-.maplibregl-ctrl button {
+/* .maplibregl-ctrl button {
     width: 30px;
     height: 30px;
 }
@@ -353,10 +353,10 @@ body {
     color: white !important;
     font-size: 16px !important;
     padding: 5px !important;
-}
+} */
 
 /* Animation Effects */
-@keyframes pulse {
+/* @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4); }
     70% { box-shadow: 0 0 0 10px rgba(67, 97, 238, 0); }
     100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0); }
@@ -364,10 +364,10 @@ body {
 
 .pulse {
     animation: pulse 1.5s infinite;
-}
+} */
 
 /* Custom Scrollbar */
-::-webkit-scrollbar {
+/* ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
@@ -384,10 +384,10 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
-}
+} */
 
 /* Media Queries for Responsive Design */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
     .prompt-container {
         width: 90%;
         bottom: 15px;
@@ -437,16 +437,16 @@ body {
     .sidebar-layer-list {
         width: 160px;
     }
-}
+} */
 
 /* Focus Styles for Accessibility */
-*:focus-visible {
+/* *:focus-visible {
     outline: 2px solid #4361ee;
     outline-offset: 2px;
-}
+} */
 
 /* Transitions */
-.fade-in {
+/* .fade-in {
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -462,5 +462,5 @@ body {
 @keyframes slideIn {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
-}
+} */
 
