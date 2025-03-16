@@ -61,45 +61,122 @@ export function MapProvider({ children }) {
     mapInitializedRef.current = true;
   };
 
+  // const addLayer = (layerData) => {
+  //   if (!map) return;
+    
+  //   const sourceId = `ee-source-${layerData.id}`;
+  //   const layerId = `ee-layer-${layerData.id}`;
+
+  //   // Remove existing layer/source if they exist
+  //   if (map.getLayer(layerId)) {
+  //     map.removeLayer(layerId);
+  //   }
+  //   if (map.getSource(sourceId)) {
+  //     map.removeSource(sourceId);
+  //   }
+
+  //   // Add the source and layer
+  //   map.addSource(sourceId, {
+  //     'type': 'raster',
+  //     'tiles': [layerData.tile_url],
+  //     'tileSize': 256
+  //   });
+
+  //   map.addLayer({
+  //     'id': layerId,
+  //     'type': 'raster',
+  //     'source': sourceId,
+  //     'paint': {
+  //       'raster-opacity': 0.8
+  //     },
+  //     'layout': {
+  //       'visibility': 'visible'
+  //     }
+  //   });
+
+  //   // Update state with new layer
+  //   setLayers(prev => {
+  //     // Remove any existing layer with same id
+  //     const filtered = prev.filter(layer => layer.id !== layerData.id);
+  //     return [...filtered, layerData];
+  //   });
+  // };
+
   const addLayer = (layerData) => {
-    if (!map) return;
+    if (!map) {
+      console.error("Map is not initialized yet");
+      return;
+    }
+    
+    console.log("Adding layer:", layerData);
     
     const sourceId = `ee-source-${layerData.id}`;
     const layerId = `ee-layer-${layerData.id}`;
-
-    // Remove existing layer/source if they exist
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId);
-    }
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId);
-    }
-
-    // Add the source and layer
-    map.addSource(sourceId, {
-      'type': 'raster',
-      'tiles': [layerData.tile_url],
-      'tileSize': 256
-    });
-
-    map.addLayer({
-      'id': layerId,
-      'type': 'raster',
-      'source': sourceId,
-      'paint': {
-        'raster-opacity': 0.8
-      },
-      'layout': {
-        'visibility': 'visible'
+  
+    try {
+      // Remove existing layer/source if they exist
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
       }
-    });
-
-    // Update state with new layer
-    setLayers(prev => {
-      // Remove any existing layer with same id
-      const filtered = prev.filter(layer => layer.id !== layerData.id);
-      return [...filtered, layerData];
-    });
+      if (map.getSource(sourceId)) {
+        map.removeSource(sourceId);
+      }
+  
+      // Ensure the map is completely loaded before adding layers
+      if (!map.loaded()) {
+        console.log("Map not fully loaded, waiting...");
+        map.once('load', () => {
+          // Pass the map instance explicitly
+          addLayerToMap(map, layerData, sourceId, layerId, setLayers);
+        });
+      } else {
+        // Pass the map instance explicitly
+        addLayerToMap(map, layerData, sourceId, layerId, setLayers);
+      }
+    } catch (error) {
+      console.error("Error in addLayer:", error);
+    }
+  };
+  
+  // Helper function to actually add the layer to the map
+  // Now accepts the map as a parameter
+  const addLayerToMap = (mapInstance, layerData, sourceId, layerId, setLayersFn) => {
+    try {
+      console.log(`Adding source: ${sourceId} with URL: ${layerData.tile_url}`);
+      
+      // Add the source for the layer
+      mapInstance.addSource(sourceId, {
+        'type': 'raster',
+        'tiles': [layerData.tile_url],
+        'tileSize': 256
+      });
+      
+      console.log(`Adding layer: ${layerId}`);
+      
+      // Add the layer
+      mapInstance.addLayer({
+        'id': layerId,
+        'type': 'raster',
+        'source': sourceId,
+        'paint': {
+          'raster-opacity': layerData.opacity || 0.8
+        },
+        'layout': {
+          'visibility': layerData.visibility || 'visible'
+        }
+      });
+      
+      console.log(`Layer added successfully: ${layerId}`);
+      
+      // Update state with new layer
+      setLayersFn(prev => {
+        // Remove any existing layer with same id
+        const filtered = prev.filter(layer => layer.id !== layerData.id);
+        return [...filtered, layerData];
+      });
+    } catch (error) {
+      console.error(`Error adding layer ${layerId} to map:`, error);
+    }
   };
 
   const removeLayer = (layerId) => {

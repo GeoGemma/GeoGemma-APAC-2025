@@ -3,7 +3,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Search } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
-import { processPrompt, geocodeLocation } from '../../services/api';
+import { geocodeLocation } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
 
 const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
@@ -24,89 +24,74 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       // Clear existing markers
       clearMarkers();
       
-      // Process the prompt with the backend
-      const formData = new FormData();
-      formData.append('prompt', prompt);
-      
-      // Use the full URL to your backend instead of a relative URL
-      const response = await fetch('http://localhost:8000/', {
+      // Use the API endpoint that we know works
+      const response = await fetch('http://localhost:8000/api/analyze', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: prompt })
       });
       
       console.log('Backend response status:', response.status);
       
-      // Parse the response HTML to extract data
-      const html = await response.text();
-      console.log('Response text length:', html.length);
+      const result = await response.json();
+      console.log('API response:', result);
       
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      const location = doc.getElementById('location')?.value;
-      const tileUrl = doc.getElementById('tile_url')?.value;
-      const errorMessage = doc.getElementById('error_message')?.value;
-      const latitude = doc.getElementById('latitude')?.value;
-      const longitude = doc.getElementById('longitude')?.value;
-      
-      console.log('Parsed values:', { 
-        location, 
-        tileUrl: tileUrl ? 'URL exists' : 'No URL', 
-        errorMessage,
-        latitude,
-        longitude
-      });
-      
-      if (errorMessage) {
-        showNotification(errorMessage, 'error');
-        return;
-      }
-      
-      if (tileUrl && tileUrl !== 'error' && location) {
-        // Create a new layer ID
-        const layerId = generateLayerId(location, prompt);
+      if (result.success && result.data) {
+        const { location, processing_type, tile_url, latitude, longitude } = result.data;
         
-        // Add the new layer to the map
-        const newLayer = {
-          id: layerId,
-          tile_url: tileUrl,
-          location: location,
-          processing_type: prompt,
-          latitude: latitude ? parseFloat(latitude) : null,
-          longitude: longitude ? parseFloat(longitude) : null,
-          opacity: 0.8,
-          visibility: 'visible'
-        };
-        
-        addLayer(newLayer);
-        
-        // Handle location navigation
-        if (location && location.trim() !== '') {
-          if (latitude && longitude) {
-            const lat = parseFloat(latitude);
-            const lon = parseFloat(longitude);
-            
-            if (!isNaN(lat) && !isNaN(lon)) {
-              addMarker(lat, lon);
-              flyToLocation(location, lat, lon);
-            }
-          } else {
-            // Try to geocode the location
-            try {
-              const geocodeResult = await geocodeLocation(location);
-              if (geocodeResult) {
-                addMarker(geocodeResult.lat, geocodeResult.lon);
-                flyToLocation(location, geocodeResult.lat, geocodeResult.lon);
+        if (tile_url) {
+          console.log('Tile URL:', tile_url);
+          
+          // Create a new layer ID
+          const layerId = generateLayerId(location, processing_type || prompt);
+          
+          // Add the new layer to the map
+          const newLayer = {
+            id: layerId,
+            tile_url: tile_url,
+            location: location,
+            processing_type: processing_type || prompt,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            opacity: 0.8,
+            visibility: 'visible'
+          };
+          
+          console.log("Adding new layer:", newLayer);
+          addLayer(newLayer);
+          
+          // Handle location navigation
+          if (location && location.trim() !== '') {
+            if (latitude && longitude) {
+              const lat = parseFloat(latitude);
+              const lon = parseFloat(longitude);
+              
+              if (!isNaN(lat) && !isNaN(lon)) {
+                addMarker(lat, lon);
+                flyToLocation(location, lat, lon);
               }
-            } catch (geocodeError) {
-              console.error('Geocoding error:', geocodeError);
+            } else {
+              // Try to geocode the location
+              try {
+                const geocodeResult = await geocodeLocation(location);
+                if (geocodeResult) {
+                  addMarker(geocodeResult.lat, geocodeResult.lon);
+                  flyToLocation(location, geocodeResult.lat, geocodeResult.lon);
+                }
+              } catch (geocodeError) {
+                console.error('Geocoding error:', geocodeError);
+              }
             }
           }
+          
+          showNotification(`Added layer: ${location} (${processing_type || prompt})`, 'success');
+        } else {
+          showNotification('Error: No tile URL returned', 'error');
         }
-        
-        showNotification(`Added layer: ${location} (${prompt})`, 'success');
       } else {
-        showNotification('Error fetching image for this location', 'error');
+        showNotification(result.message || 'Error fetching image for this location', 'error');
       }
     } catch (error) {
       console.error('Error processing prompt:', error);
