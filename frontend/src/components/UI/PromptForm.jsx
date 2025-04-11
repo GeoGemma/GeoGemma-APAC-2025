@@ -1,7 +1,7 @@
 // src/components/UI/PromptForm.jsx
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Search } from 'lucide-react';
+import { Search, Mic } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import { geocodeLocation } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
@@ -104,17 +104,31 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   return (
     <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-4/5 max-w-2xl z-10">
       <form 
-        className="flex bg-background-sidebar/80 rounded-lg p-2 shadow-custom"
+        className="flex items-center bg-background-light rounded-full p-1 elevation-2 transition-shadow hover:shadow-google-hover"
         onSubmit={handleSubmit}
       >
+        <div className="flex items-center px-3 text-google-grey-300">
+          <Search size={20} />
+        </div>
         <input
           type="text"
-          className="prompt-input"
-          placeholder="Examples: Show NDVI in Paris for 2020 | RGB imagery of Tokyo from Landsat 8"
+          className="flex-1 p-2 bg-transparent border-none text-google-grey-100 text-base focus:outline-none font-roboto placeholder-google-grey-400"
+          placeholder="Search for Earth imagery..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
-        <button type="submit" className="prompt-button">
+        <button 
+          type="button" 
+          className="p-2 bg-transparent border-none cursor-pointer text-google-grey-300 hover:text-primary rounded-full"
+          title="Voice search"
+        >
+          <Mic size={20} />
+        </button>
+        <button 
+          type="submit" 
+          className="p-2 m-1 bg-primary text-white border-none rounded-full cursor-pointer w-10 h-10 flex items-center justify-center transition-all hover:bg-primary-dark active:scale-95"
+          title="Search"
+        >
           <Search size={18} />
         </button>
       </form>

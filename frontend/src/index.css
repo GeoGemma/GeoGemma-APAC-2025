@@ -3,9 +3,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Google fonts */
+@import './styles/fonts.css';
+
 @layer base {
   body {
-    @apply bg-background-dark text-white overflow-hidden;
+    @apply bg-background-dark text-google-grey-100 overflow-hidden;
+    font-family: 'Roboto', Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    @apply font-medium;
   }
 }
 
@@ -14,40 +23,56 @@
     @apply h-screen w-full;
   }
   
+  /* Sidebar icons - Google style */
   .sidebar-icon {
-    @apply p-3 text-white cursor-pointer text-xl mb-3 transition-all rounded-md w-10 h-10 flex items-center justify-center shadow-md hover:bg-white/15 hover:-translate-y-0.5;
+    @apply p-3 text-google-grey-200 cursor-pointer text-xl mb-3 transition-all rounded-lg w-10 h-10 flex items-center justify-center;
+    @apply hover:bg-background-light hover:text-white hover:shadow-google-hover;
   }
   
   .sidebar-icon.active {
-    @apply bg-primary/80;
+    @apply bg-primary/20 text-primary;
   }
   
-  /* .prompt-input {
-    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:shadow-outline;
-  } */
-
+  /* Google-styled input */
   .prompt-input {
-    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:ring-2 focus:ring-primary/50;
+    @apply flex-1 p-3 border-none rounded-lg bg-background-light text-google-grey-100 text-base transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
   }
   
+  /* Google-styled button */
   .prompt-button {
-    @apply p-3 bg-primary text-white border-none rounded cursor-pointer text-base flex items-center justify-center ml-1 transition-all hover:bg-primary-dark active:scale-95;
+    @apply p-3 bg-primary text-background-dark border-none rounded-lg cursor-pointer text-base flex items-center justify-center ml-2;
+    @apply transition-all hover:bg-primary-dark active:scale-95 font-medium;
   }
   
+  /* Layer item card */
   .layer-item {
-    @apply my-2 p-2 bg-white/10 rounded transition-colors hover:bg-white/20;
+    @apply my-2 p-3 bg-background-light rounded-lg transition-colors hover:bg-background-surface;
+    @apply border border-google-grey-500/20;
   }
   
+  /* Layer control buttons */
   .layer-control-button {
-    @apply bg-transparent border-none cursor-pointer text-white transition-transform hover:scale-110 hover:opacity-80 w-6 h-6 flex items-center justify-center ml-1;
+    @apply bg-transparent border-none cursor-pointer text-google-grey-200 transition-transform;
+    @apply hover:scale-110 hover:text-primary w-6 h-6 flex items-center justify-center ml-1;
+  }
+
+  /* Google-style sidebar tool icon */
+  .sidebar-tool-icon {
+    @apply flex items-center p-2 rounded-lg text-google-grey-200 cursor-pointer transition-all;
+    @apply w-[90%] mx-auto hover:bg-background-light hover:text-white;
+  }
+  
+  .sidebar-tool-icon.active {
+    @apply bg-primary/20 text-primary;
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Google style */
 @layer utilities {
   .scrollbar-custom {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+    scrollbar-color: rgba(154, 160, 166, 0.3) rgba(32, 33, 36, 0.7);
   }
   
   .scrollbar-custom::-webkit-scrollbar {
@@ -56,66 +81,89 @@
   }
   
   .scrollbar-custom::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(32, 33, 36, 0.7);
     border-radius: 4px;
   }
   
   .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(154, 160, 166, 0.3);
     border-radius: 4px;
   }
   
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(154, 160, 166, 0.5);
   }
 }
 
-/* MapLibre Overrides */
+/* MapLibre Overrides - Google Maps style */
 .maplibregl-ctrl button {
   @apply w-8 h-8;
 }
 
 .maplibregl-ctrl-group {
   @apply bg-background-sidebar !important;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .maplibregl-ctrl button {
-  @apply bg-transparent border-none text-white !important;
+  @apply bg-transparent border-none text-google-grey-200 !important;
 }
 
 .maplibregl-ctrl button:hover {
-  @apply bg-white/15 !important;
+  @apply bg-background-light text-white !important;
 }
 
 .maplibregl-ctrl button.active {
-  @apply bg-primary/80 !important;
+  @apply bg-primary/20 text-primary !important;
 }
 
 .maplibregl-popup-content {
-  @apply bg-background-sidebar/90 text-white !important;
+  @apply bg-background-sidebar/95 text-google-grey-100 !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4) !important;
 }
 
 .maplibregl-popup-close-button {
-  @apply text-white !important;
+  @apply text-google-grey-300 !important;
+  font-size: 20px !important;
+  padding: 3px !important;
 }
 
-/* Animation */
+.maplibregl-popup-close-button:hover {
+  @apply text-white bg-transparent !important;
+}
+
+/* Animation - Smooth Google-style transitions */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease-in;
+  animation: fadeIn 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 @keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
 .slide-in {
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Google Material elevation and surfaces */
+.elevation-1 {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.elevation-2 {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+}
+
+.elevation-3 {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
 }

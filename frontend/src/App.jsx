@@ -4,6 +4,7 @@ import { MapProvider } from './contexts/MapContext';
 import Layout from './components/Layout/Layout';
 import AppMap from './components/Map/AppMap';
 import Sidebar from './components/Sidebar/Sidebar';
+import RightSidebar from './components/Sidebar/RightSidebar';
 import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
@@ -32,6 +33,7 @@ function App() {
       <Layout>
         <AppMap />
         <Sidebar showNotification={showNotification} />
+        <RightSidebar showNotification={showNotification} />
         <PromptForm 
           showNotification={showNotification} 
           showLoading={showLoading}
