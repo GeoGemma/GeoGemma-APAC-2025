@@ -1,143 +1,172 @@
 // src/components/Sidebar/Sidebar.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { ChevronLeft, ChevronRight, Menu, Ruler, Layers, Info, Trash2 } from 'lucide-react';
-import { useMap } from '../../contexts/MapContext';
-import LayersList from './LayersList';
-import MeasureToolControl from '../Map/MeasureToolControl';
-import { clearLayers as clearLayersApi } from '../../services/api';
+import { ChevronLeft, ChevronRight, Plus, MessageCircle, MoreVertical } from 'lucide-react';
+import './sidebar.css';
 
 const Sidebar = ({ showNotification }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(null);
-  const { clearLayers } = useMap();
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+
+  // Function to handle the creation of a new chat
+  const handleNewChat = () => {
+    const newChat = {
+      id: Date.now(),
+      title: "New conversation",
+      messages: [],
+      timestamp: new Date()
+    };
+    
+    setChatHistory(prev => [newChat, ...prev]);
+    setActiveChat(newChat.id);
+    showNotification("New chat created", "success");
+  };
+
+  // Listen for new prompts and update chat history
+  useEffect(() => {
+    // Listen for prompt submissions
+    const handlePromptSubmission = (event) => {
+      if (event.detail && event.detail.prompt) {
+        const { prompt, response } = event.detail;
+        
+        // Create a new chat if none is active
+        if (!activeChat) {
+          const newChat = {
+            id: Date.now(),
+            title: prompt.substring(0, 30) + (prompt.length > 30 ? '...' : ''),
+            messages: [
+              { type: 'user', content: prompt },
+              { type: 'system', content: response || 'Processing...' }
+            ],
+            timestamp: new Date()
+          };
+          
+          setChatHistory(prev => [newChat, ...prev]);
+          setActiveChat(newChat.id);
+        } else {
+          // Update existing chat
+          setChatHistory(prev => prev.map(chat => {
+            if (chat.id === activeChat) {
+              // Update chat with new messages
+              const updatedChat = {
+                ...chat,
+                messages: [
+                  ...chat.messages,
+                  { type: 'user', content: prompt },
+                  { type: 'system', content: response || 'Processing...' }
+                ],
+                // Update title based on first prompt if it's a "New conversation"
+                title: chat.title === "New conversation" 
+                  ? prompt.substring(0, 30) + (prompt.length > 30 ? '...' : '')
+                  : chat.title
+              };
+              return updatedChat;
+            }
+            return chat;
+          }));
+        }
+      }
+    };
+
+    // Create a custom event listener for prompt submissions
+    window.addEventListener('prompt-submitted', handlePromptSubmission);
+    
+    return () => {
+      window.removeEventListener('prompt-submitted', handlePromptSubmission);
+    };
+  }, [activeChat, showNotification]);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setIsExpanded(!isExpanded);
   };
 
-  const toggleSection = (section) => {
-    if (activeSection === section) {
-      setActiveSection(null);
-    } else {
-      setActiveSection(section);
-    }
-  };
-
-  const handleClearLayers = async () => {
-    try {
-      await clearLayersApi();
-      clearLayers();
-      showNotification('All layers cleared successfully', 'success');
-    } catch (error) {
-      showNotification('Error clearing layers', 'error');
-    }
+  const selectChat = (chatId) => {
+    setActiveChat(chatId);
   };
 
   return (
-    <div className={`fixed top-0 left-0 h-full transition-all duration-300 z-10 ${isSidebarOpen ? 'w-64' : 'w-16'} bg-background-dark elevation-2`}>
-      {/* Logo Section */}
-      <div className="border-b border-background-light flex justify-center py-4">
-        {isSidebarOpen ? (
-          <div className="flex items-center justify-between w-full px-4">
-            <div className="flex items-center">
-              {/* Logo image */}
-              <img 
-                src="/geoshort.png" 
-                alt="GeoGemma Logo" 
-                className="h-8 w-8 object-contain"
-              />
-              <span className="ml-2 text-google-grey-100 font-google-sans">GeoGemma</span>
-            </div>
-            <button onClick={toggleSidebar} className="text-google-grey-300 hover:text-white p-1 rounded-full hover:bg-background-light">
-              <ChevronLeft size={20} />
+    <div className={`fixed left-0 sidebar-with-topbar bg-background-dark z-10 transition-all duration-300 border-r border-background-light/10 ${isExpanded ? 'w-72' : 'w-12'}`}>
+      {/* Sidebar Toggle (only shown when collapsed) */}
+      {!isExpanded && (
+        <button 
+          onClick={toggleSidebar}
+          className="absolute top-4 left-0 right-0 text-google-grey-300 hover:text-white p-1 mx-auto flex justify-center"
+        >
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      {/* Sidebar Content - only shown when expanded */}
+      {isExpanded && (
+        <div className="flex flex-col h-full">
+          {/* New Chat Button - Now placed at the top */}
+          <div className="px-3 pt-4 pb-4">
+            <button 
+              className="w-full bg-google-red/80 hover:bg-google-red text-white rounded-full py-1.5 px-3 flex items-center justify-center gap-1 transition-colors text-sm font-medium"
+              onClick={handleNewChat}
+            >
+              <Plus size={16} />
+              <span>New chat</span>
             </button>
           </div>
-        ) : (
-          <div className="flex justify-center w-full">
-            {/* Collapsed logo */}
-            <img 
-              src="/geoshort.png" 
-              alt="GeoGemma Logo" 
-              className="h-8 w-8 object-contain"
-            />
-          </div>
-        )}
-      </div>
 
-      {/* Main Sidebar Content */}
-      <div className="flex flex-col">
-        {/* Expand/Collapse button for small sidebar */}
-        {!isSidebarOpen && (
-          <button 
-            className="mt-2 mx-auto text-google-grey-300 hover:text-white p-2 rounded-full hover:bg-background-light" 
-            onClick={toggleSidebar}
-          >
-            <ChevronRight size={20} />
-          </button>
-        )}
-        
-        {/* Tool Icons */}
-        <div className="flex flex-col items-center py-5 gap-4">
-          <div 
-            className={`sidebar-tool-icon ${activeSection === 'measure' ? 'active' : ''}`}
-            title="Measure"
-            onClick={() => toggleSection('measure')}
-          >
-            <Ruler size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm font-roboto">Measure</span>}
+          {/* Chats Navigation */}
+          <div className="mb-1">
+            <button className="flex items-center w-full px-3 py-2 text-sm text-white bg-background-light/20 hover:bg-background-light/30">
+              <MessageCircle size={16} className="mr-3" />
+              <span>Chats</span>
+            </button>
           </div>
-          
-          <div 
-            className={`sidebar-tool-icon ${activeSection === 'layers' ? 'active' : ''}`}
-            title="Layer Control"
-            onClick={() => toggleSection('layers')}
-          >
-            <Layers size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm font-roboto">Layers</span>}
+
+          {/* Recents Section */}
+          <div className="mt-3">
+            <h3 className="px-4 text-xs font-medium text-google-grey-400">Recents</h3>
           </div>
-          
-          <div 
-            className="sidebar-tool-icon"
-            title="Feature Information"
-          >
-            <Info size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm font-roboto">Information</span>}
-          </div>
-          
-          <div 
-            className="sidebar-tool-icon bg-google-red/10 hover:bg-google-red/20 hover:text-google-red mt-4"
-            title="Clear Layers"
-            onClick={handleClearLayers}
-          >
-            <Trash2 size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm font-roboto">Clear Layers</span>}
-          </div>
-        </div>
-      </div>
-      
-      {/* Panel Content */}
-      {isSidebarOpen && (
-        <div className="px-2">
-          {/* Layers Panel */}
-          {activeSection === 'layers' && (
-            <div className="bg-background-light rounded-lg overflow-hidden elevation-1">
-              <h3 className="text-center text-sm border-b border-background-surface py-2 font-google-sans">Layers</h3>
-              <div className="max-h-[60vh] overflow-y-auto scrollbar-custom">
-                <LayersList showNotification={showNotification} />
+
+          {/* Chat History Section */}
+          <div className="flex-1 overflow-y-auto scrollbar-custom mt-1 px-2">
+            {chatHistory.length > 0 ? (
+              <div className="space-y-0.5">
+                {chatHistory.map(chat => (
+                  <div 
+                    key={chat.id} 
+                    className={`chat-item group ${chat.id === activeChat ? 'bg-background-light/20' : ''}`}
+                    onClick={() => selectChat(chat.id)}
+                  >
+                    <span className="truncate text-sm">{chat.title}</span>
+                    
+                    <button 
+                      className="p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChatHistory(prev => prev.filter(c => c.id !== chat.id));
+                        if (activeChat === chat.id) {
+                          setActiveChat(null);
+                        }
+                      }}
+                    >
+                      <MoreVertical size={14} className="text-google-grey-300" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-          
-          {/* Measure Tools Panel */}
-          {activeSection === 'measure' && (
-            <div className="bg-background-light rounded-lg overflow-hidden elevation-1">
-              <h3 className="text-center text-sm border-b border-background-surface py-2 font-google-sans">Measure</h3>
-              <div className="p-2">
-                <MeasureToolControl showNotification={showNotification} />
+            ) : (
+              <div className="text-center text-google-grey-400 text-xs py-4 px-4">
+                No recent chats
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* Toggle button at bottom */}
+          <div className="p-2 mt-auto border-t border-background-light/10">
+            <button 
+              onClick={toggleSidebar}
+              className="flex items-center justify-end w-full text-google-grey-400 hover:text-white text-xs p-1"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

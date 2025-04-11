@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from '../../contexts/MapContext';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import '../../styles/topbar.css';
 
 const AppMap = () => {
   const mapContainer = useRef(null);
@@ -14,7 +15,7 @@ const AppMap = () => {
   }, [initializeMap]);
 
   return (
-    <div ref={mapContainer} className="w-full h-full relative" />
+    <div ref={mapContainer} className="w-full main-content absolute" />
   );
 };
 

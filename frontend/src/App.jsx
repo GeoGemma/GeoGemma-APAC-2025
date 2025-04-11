@@ -30,7 +30,7 @@ function App() {
 
   return (
     <MapProvider>
-      <Layout>
+      <Layout showNotification={showNotification}>
         <AppMap />
         <Sidebar showNotification={showNotification} />
         <RightSidebar showNotification={showNotification} />
