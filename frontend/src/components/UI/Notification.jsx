@@ -1,75 +1,93 @@
 // src/components/UI/Notification.jsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, InfoIcon, XCircle, X } from 'lucide-react';
+import '../../styles/notification.css';
 
-const Notification = ({ message, type = 'info' }) => {
+const Notification = ({ message, type = 'info', duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
-  
+  const [progress, setProgress] = useState(100);
+  const [intervalId, setIntervalId] = useState(null);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-    }, 3000);
+    // Show notification with entrance animation
+    setIsVisible(true);
     
-    return () => clearTimeout(timer);
-  }, [message]);
-  
-  // Define icon and color based on notification type
-  const getNotificationStyles = () => {
+    // Start progress timer
+    const steps = 100;
+    const stepDuration = duration / steps;
+    
+    const id = setInterval(() => {
+      setProgress(prev => {
+        if (prev <= 0) {
+          clearInterval(id);
+          setIsVisible(false);
+          return 0;
+        }
+        return prev - (100 / steps);
+      });
+    }, stepDuration);
+    
+    setIntervalId(id);
+
+    // Auto-hide after duration
+    const hideTimer = setTimeout(() => {
+      setIsVisible(false);
+      if (onClose) onClose();
+    }, duration);
+
+    return () => {
+      clearTimeout(hideTimer);
+      clearInterval(id);
+    };
+  }, [duration, message, onClose]);
+
+  const handleClose = () => {
+    if (intervalId) clearInterval(intervalId);
+    setIsVisible(false);
+    if (onClose) onClose();
+  };
+
+  const getIcon = () => {
     switch (type) {
       case 'success':
-        return {
-          icon: <CheckCircle size={20} />,
-          bgColor: 'bg-google-green',
-          textColor: 'text-background-dark',
-          iconColor: 'text-background-dark'
-        };
+        return <CheckCircle size={18} />;
       case 'error':
-        return {
-          icon: <AlertCircle size={20} />,
-          bgColor: 'bg-google-red',
-          textColor: 'text-white',
-          iconColor: 'text-white'
-        };
+        return <XCircle size={18} />;
       case 'warning':
-        return {
-          icon: <AlertTriangle size={20} />,
-          bgColor: 'bg-google-yellow',
-          textColor: 'text-background-dark',
-          iconColor: 'text-background-dark'
-        };
+        return <AlertCircle size={18} />;
       case 'info':
       default:
-        return {
-          icon: <Info size={20} />,
-          bgColor: 'bg-google-blue',
-          textColor: 'text-white',
-          iconColor: 'text-white'
-        };
+        return <InfoIcon size={18} />;
     }
   };
-  
-  const { icon, bgColor, textColor, iconColor } = getNotificationStyles();
-  
+
+  if (!isVisible) return null;
+
   return (
-    <div 
-      className={`
-        fixed bottom-20 left-1/2 -translate-x-1/2 
-        py-2 px-4 rounded-full ${bgColor} ${textColor}
-        shadow-lg z-50 elevation-2
-        transition-all duration-300 flex items-center
-        ${isVisible ? 'opacity-100 transform-none' : 'opacity-0 translate-y-4'}
-      `}
-    >
-      <span className={`mr-2 ${iconColor}`}>{icon}</span>
-      <span className="font-roboto font-medium">{message}</span>
+    <div className={`notification notification-${type} slide-up`}>
+      <div className="notification-icon">
+        {getIcon()}
+      </div>
+      <div className="notification-content">
+        {message}
+      </div>
+      <button className="notification-close" onClick={handleClose}>
+        <X size={16} />
+      </button>
+      <div 
+        className="notification-progress" 
+        style={{ width: `${progress}%` }} 
+      />
     </div>
   );
 };
 
 Notification.propTypes = {
   message: PropTypes.string.isRequired,
-  type: PropTypes.oneOf(['success', 'error', 'warning', 'info'])
+  type: PropTypes.oneOf(['info', 'success', 'warning', 'error']),
+  duration: PropTypes.number,
+  onClose: PropTypes.func
 };
 
 export default Notification;

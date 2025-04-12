@@ -1,15 +1,53 @@
 // src/components/UI/PromptForm.jsx
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Search, Mic } from 'lucide-react';
+import { Search, Mic, X, Sparkles } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
-import { geocodeLocation } from '../../services/api';
+import { geocodeLocation, analyzePrompt } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
-import '../../styles/topbar.css';
+import '../../styles/promptForm.css';
 
 const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [prompt, setPrompt] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [recentPrompts, setRecentPrompts] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const promptRef = useRef(null);
+  const inputRef = useRef(null);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
+  
+  // Example suggestions for different types of prompts
+  const suggestions = [
+    "Show NDVI for New York City in 2022",
+    "RGB imagery of Amazon rainforest",
+    "Surface water in Lake Victoria",
+    "Land use in Paris, France",
+    "Land surface temperature in Cairo for summer 2021"
+  ];
+
+  useEffect(() => {
+    // Load recent prompts from local storage
+    const savedPrompts = localStorage.getItem('recentPrompts');
+    if (savedPrompts) {
+      try {
+        setRecentPrompts(JSON.parse(savedPrompts).slice(0, 5));
+      } catch (e) {
+        console.error('Error parsing saved prompts:', e);
+      }
+    }
+    
+    // Add click outside handler for suggestions
+    const handleClickOutside = (event) => {
+      if (promptRef.current && !promptRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,6 +56,11 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       showNotification('Please enter a prompt', 'warning');
       return;
     }
+    
+    // Save to recent prompts
+    const updatedPrompts = [prompt, ...recentPrompts.filter(p => p !== prompt)].slice(0, 5);
+    setRecentPrompts(updatedPrompts);
+    localStorage.setItem('recentPrompts', JSON.stringify(updatedPrompts));
     
     showLoading('Processing your request...');
     
@@ -31,24 +74,15 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       // Clear existing markers
       clearMarkers();
       
-      // Use the API endpoint that we know works
-      const response = await fetch('http://localhost:8000/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: prompt })
-      });
+      // Use the API service function instead of direct fetch
+      const result = await analyzePrompt(prompt);
       
-      console.log('Backend response status:', response.status);
-      
-      const result = await response.json();
       console.log('API response:', result);
       
       // Response to show in chat
       let responseText = '';
       
-      if (result.success && result.data) {
+      if (result && result.success && result.data) {
         const { location, processing_type, tile_url, latitude, longitude } = result.data;
         
         if (tile_url) {
@@ -103,7 +137,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
           showNotification('Error: No tile URL returned', 'error');
         }
       } else {
-        responseText = result.message || 'Error fetching image for this location';
+        responseText = result && result.message ? result.message : 'Error fetching image for this location';
         showNotification(responseText, 'error');
       }
       
@@ -118,7 +152,15 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       
     } catch (error) {
       console.error('Error processing prompt:', error);
-      const errorMessage = 'Failed to process the prompt: ' + (error.message || 'Unknown error');
+      let errorMessage = 'Failed to process the prompt';
+      
+      if (error.response) {
+        errorMessage += `: ${error.response.data?.message || error.response.statusText || 'Server error'}`;
+      } else if (error.request) {
+        errorMessage += ': No response from server. Please check your connection.';
+      } else {
+        errorMessage += `: ${error.message || 'Unknown error'}`;
+      }
       
       // Emit event with the error
       const errorEvent = new CustomEvent('prompt-submitted', {
@@ -129,40 +171,108 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       showNotification(errorMessage, 'error');
     } finally {
       hideLoading();
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsFocused(true);
+    setShowSuggestions(true);
+  };
+
+  const handlePromptSelect = (selectedPrompt) => {
+    setPrompt(selectedPrompt);
+    setShowSuggestions(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleClearPrompt = () => {
+    setPrompt('');
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
   };
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[30rem] max-w-xl z-10">
+    <div className={`prompt-container ${isFocused ? 'focused' : ''}`} ref={promptRef}>
       <form 
-        className="flex items-center bg-background-dark/90 rounded-full py-1.5 px-3 elevation-1 shadow-md"
+        className="prompt-form"
         onSubmit={handleSubmit}
       >
-        <div className="flex items-center px-2 text-google-grey-300">
+        <div className="prompt-icon">
           <Search size={18} />
         </div>
         <input
+          ref={inputRef}
           type="text"
-          className="flex-1 p-1.5 bg-transparent border-none text-google-grey-100 text-base focus:outline-none font-roboto placeholder-google-grey-400"
+          className="prompt-input"
           placeholder="Search for Earth imagery..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onFocus={handleInputFocus}
+          onBlur={() => setIsFocused(false)}
         />
+        {prompt && (
+          <button 
+            type="button" 
+            className="prompt-clear"
+            onClick={handleClearPrompt}
+            title="Clear input"
+          >
+            <X size={16} />
+          </button>
+        )}
         <button 
           type="button" 
-          className="p-1.5 bg-transparent border-none cursor-pointer text-google-grey-300 hover:text-primary rounded-full"
+          className="prompt-voice"
           title="Voice search"
         >
           <Mic size={18} />
         </button>
         <button 
           type="submit" 
-          className="p-1.5 bg-primary text-white border-none rounded-full cursor-pointer w-8 h-8 flex items-center justify-center transition-all hover:bg-primary-dark active:scale-95 ml-1"
+          className="prompt-submit"
           title="Search"
         >
           <Search size={16} />
         </button>
       </form>
+
+      {showSuggestions && (
+        <div className="prompt-suggestions scale-in">
+          {recentPrompts.length > 0 && (
+            <div className="suggestion-section">
+              <div className="suggestion-header">Recent Searches</div>
+              {recentPrompts.map((recentPrompt, index) => (
+                <div 
+                  key={`recent-${index}`} 
+                  className="suggestion-item"
+                  onClick={() => handlePromptSelect(recentPrompt)}
+                >
+                  <Search size={14} className="suggestion-icon" />
+                  <span>{recentPrompt}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="suggestion-section">
+            <div className="suggestion-header">Try These</div>
+            {suggestions.map((suggestion, index) => (
+              <div 
+                key={`suggestion-${index}`} 
+                className="suggestion-item"
+                onClick={() => handlePromptSelect(suggestion)}
+              >
+                <Sparkles size={14} className="suggestion-icon" />
+                <span>{suggestion}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

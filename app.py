@@ -5,14 +5,14 @@ from functools import lru_cache
 from typing import Optional, List, Dict, Any, Union, Tuple
 import json
 
-from fastapi import FastAPI, Request, Form, HTTPException, Depends
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import ee
-from ee_utils import get_tile_url  # Import the function, not the whole module
+from ee_utils import get_tile_url, process_time_series, get_admin_boundary  # Import additional functions
 from langchain_ollama import OllamaLLM
 from dotenv import load_dotenv
 import google.auth.credentials
@@ -20,9 +20,18 @@ import datetime
 from starlette.middleware.sessions import SessionMiddleware
 
 from authenticate_ee import initialize_ee
+from database import (
+    connect_to_mongodb, close_mongodb_connection, 
+    save_analysis_result, save_layer, get_user_analyses, get_user_layers,
+    save_custom_area, AnalysisResult as DBAnalysisResult,
+    SavedLayer as DBSavedLayer, TimeSeriesAnalysis, CustomArea
+)
 
 # Load environment variables
 load_dotenv()
+
+# Override project ID - force use of the correct one
+os.environ['EE_PROJECT_ID'] = 'ee-khalilzaryani007'
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,23 +50,12 @@ app = FastAPI(
 # Update CORS configuration in app.py
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative React dev server
-        "http://localhost",       # Production when served from Nginx
-        "http://frontend",        # Docker service name
-    ],
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "a-very-secret-key"),
@@ -70,7 +68,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Project ID
-PROJECT_ID = os.environ.get("EE_PROJECT_ID")
+PROJECT_ID = 'ee-khalilzaryani007'  # Hardcoded to ensure correct value
 if not PROJECT_ID:
     logging.warning("EE_PROJECT_ID environment variable is not set!")
 
@@ -80,6 +78,8 @@ EE_INITIALIZATION_ERROR = None
 LLM_INITIALIZED = False
 LLM_INITIALIZATION_ERROR = None
 llm = None  # Global LLM instance
+DB_INITIALIZED = False
+DB_INITIALIZATION_ERROR = None
 
 # Pydantic Models
 class LayerInfo(BaseModel):
@@ -87,9 +87,36 @@ class LayerInfo(BaseModel):
     tile_url: str
     location: str
     processing_type: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    opacity: float = 0.8
+    visibility: str = "visible"
 
 class AnalysisRequest(BaseModel):
     prompt: str
+    user_id: Optional[str] = None
+    save_result: bool = True
+
+class TimeSeriesRequest(BaseModel):
+    location: str
+    processing_type: str
+    start_date: str
+    end_date: str
+    interval: str = "monthly"
+    user_id: Optional[str] = None
+
+class CustomAreaRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    geometry: Dict[str, Any]  # GeoJSON geometry
+    user_id: Optional[str] = None
+
+class ComparisonRequest(BaseModel):
+    location: str
+    processing_type: str
+    date1: str
+    date2: str
+    user_id: Optional[str] = None
 
 class AnalysisResult(BaseModel):
     location: str
@@ -109,8 +136,8 @@ class ApiResponse(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Earth Engine and LLM on startup."""
-    global EE_INITIALIZED, EE_INITIALIZATION_ERROR, LLM_INITIALIZED, LLM_INITIALIZATION_ERROR, llm
+    """Initialize Earth Engine, LLM, and MongoDB on startup."""
+    global EE_INITIALIZED, EE_INITIALIZATION_ERROR, LLM_INITIALIZED, LLM_INITIALIZATION_ERROR, llm, DB_INITIALIZED, DB_INITIALIZATION_ERROR
     
     # Initialize Earth Engine
     if PROJECT_ID:
@@ -141,6 +168,26 @@ async def startup_event():
         LLM_INITIALIZED = False
         LLM_INITIALIZATION_ERROR = str(e)
         logging.error(f"LLM initialization failed: {e}")
+    
+    # Initialize MongoDB connection
+    try:
+        db_success = await connect_to_mongodb()
+        DB_INITIALIZED = db_success
+        if db_success:
+            logging.info("MongoDB connection established successfully")
+        else:
+            DB_INITIALIZATION_ERROR = "Failed to connect to MongoDB"
+            logging.error(DB_INITIALIZATION_ERROR)
+    except Exception as e:
+        DB_INITIALIZED = False
+        DB_INITIALIZATION_ERROR = str(e)
+        logging.error(f"MongoDB connection failed: {e}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close MongoDB connection on shutdown."""
+    await close_mongodb_connection()
 
 
 @app.get("/health")
@@ -152,11 +199,13 @@ async def health_check():
         "ee_error": EE_INITIALIZATION_ERROR,
         "llm_initialized": LLM_INITIALIZED,
         "llm_error": LLM_INITIALIZATION_ERROR,
+        "db_initialized": DB_INITIALIZED,
+        "db_error": DB_INITIALIZATION_ERROR,
         "project_id_set": PROJECT_ID is not None,
         "version": "1.0.0",
         "ollama_base_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
     }
-    if not all([EE_INITIALIZED, LLM_INITIALIZED, PROJECT_ID]):
+    if not all([EE_INITIALIZED, LLM_INITIALIZED, PROJECT_ID, DB_INITIALIZED]):
         status = "degraded"
     return {"status": status, "diagnostics": diagnostics}
 
@@ -184,6 +233,8 @@ async def check_services():
         errors.append(f"Earth Engine unavailable: {EE_INITIALIZATION_ERROR}")
     if not LLM_INITIALIZED:
         errors.append(f"LLM unavailable: {LLM_INITIALIZATION_ERROR}")
+    if not DB_INITIALIZED:
+        errors.append(f"Database unavailable: {DB_INITIALIZATION_ERROR}")
     return errors
 
 
@@ -255,15 +306,46 @@ async def process_prompt(request: Request, prompt: str = Form(...)):
             else:
                 # Add a new layer
                 layer_id = f"{location.replace(' ', '_')}_{processing_type}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-                layers.append({
+                new_layer = {
                     'id': layer_id, 
                     'tile_url': tile_url, 
                     'location': location, 
                     'processing_type': processing_type, 
                     "latitude": latitude, 
-                    "longitude": longitude
-                })
+                    "longitude": longitude,
+                    "opacity": 0.8,
+                    "visibility": "visible"
+                }
+                layers.append(new_layer)
                 request.session["layers"] = layers
+                
+                # Save analysis result and layer to database
+                if DB_INITIALIZED:
+                    analysis_data = {
+                        "prompt": prompt,
+                        "location": location,
+                        "processing_type": processing_type,
+                        "satellite": satellite,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "year": year,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "tile_url": tile_url
+                    }
+                    analysis_id = await save_analysis_result(analysis_data)
+                    
+                    if analysis_id:
+                        layer_data = {
+                            "name": f"{location} {processing_type}",
+                            "location": location,
+                            "processing_type": processing_type,
+                            "tile_url": tile_url,
+                            "latitude": latitude,
+                            "longitude": longitude,
+                            "analysis_id": analysis_id
+                        }
+                        await save_layer(layer_data)
         else:
             error_message = "Failed to analyze prompt."
     except Exception as e:
@@ -282,8 +364,18 @@ async def process_prompt(request: Request, prompt: str = Form(...)):
     })
 
 
+@app.options("/api/analyze")
+async def options_analyze():
+    """Handle OPTIONS requests for the /api/analyze endpoint."""
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+
 @app.post("/api/analyze", response_model=ApiResponse)
-async def api_analyze_prompt(request: AnalysisRequest):
+async def api_analyze_prompt(request: AnalysisRequest, background_tasks: BackgroundTasks):
     """API endpoint to analyze prompt."""
     if errors := await check_services():
         return ApiResponse(success=False, message=" ".join(errors))
@@ -304,20 +396,168 @@ async def api_analyze_prompt(request: AnalysisRequest):
         if data["tile_url"] is None:
             return ApiResponse(success=False, message="Error fetching image.")
             
+        # Save analysis and layer to database if requested
+        if request.save_result and DB_INITIALIZED:
+            background_tasks.add_task(
+                save_analysis_and_layer,
+                request.prompt,
+                data,
+                request.user_id
+            )
+            
         return ApiResponse(success=True, message="Analysis complete", data=data)
     except Exception as e:
         return ApiResponse(success=False, message=f"Error: {e}")
 
 
+@app.post("/api/time-series", response_model=ApiResponse)
+async def create_time_series(request: TimeSeriesRequest):
+    """API endpoint to create a time series analysis."""
+    if errors := await check_services():
+        return ApiResponse(success=False, message=" ".join(errors))
+    
+    try:
+        # Get admin boundary
+        geometry = get_admin_boundary(
+            request.location, request.start_date, request.end_date, 
+            None, None, llm, LLM_INITIALIZED
+        )
+        
+        if not geometry:
+            return ApiResponse(success=False, message=f"Could not find location: {request.location}")
+        
+        # Process time series
+        result = process_time_series(
+            geometry, request.processing_type, request.start_date, 
+            request.end_date, request.interval, PROJECT_ID
+        )
+        
+        if not result:
+            return ApiResponse(success=False, message="Failed to process time series.")
+            
+        # Save to database
+        if DB_INITIALIZED:
+            time_series = TimeSeriesAnalysis(
+                user_id=request.user_id,
+                location=request.location,
+                processing_type=request.processing_type,
+                start_date=request.start_date,
+                end_date=request.end_date,
+                interval=request.interval,
+                results=result
+            )
+            await time_series.insert()
+            
+        return ApiResponse(success=True, message="Time series created", data={
+            "location": request.location,
+            "processing_type": request.processing_type,
+            "results": result
+        })
+    except Exception as e:
+        logging.exception("Error creating time series")
+        return ApiResponse(success=False, message=f"Error: {e}")
+
+
+@app.post("/api/custom-area", response_model=ApiResponse)
+async def create_custom_area(request: CustomAreaRequest):
+    """API endpoint to create a custom area for analysis."""
+    if not DB_INITIALIZED:
+        return ApiResponse(success=False, message="Database not available")
+    
+    try:
+        area_id = await save_custom_area({
+            "name": request.name,
+            "description": request.description,
+            "geometry": request.geometry,
+            "user_id": request.user_id
+        })
+        
+        if not area_id:
+            return ApiResponse(success=False, message="Failed to save custom area")
+            
+        return ApiResponse(success=True, message="Custom area created", data={
+            "id": area_id,
+            "name": request.name
+        })
+    except Exception as e:
+        logging.exception("Error creating custom area")
+        return ApiResponse(success=False, message=f"Error: {e}")
+
+
+@app.post("/api/comparison", response_model=ApiResponse)
+async def create_comparison(request: ComparisonRequest):
+    """API endpoint to create a comparison between two dates."""
+    if errors := await check_services():
+        return ApiResponse(success=False, message=" ".join(errors))
+    
+    try:
+        # Get admin boundary
+        geometry = get_admin_boundary(
+            request.location, None, None, None, None, llm, LLM_INITIALIZED
+        )
+        
+        if not geometry:
+            return ApiResponse(success=False, message=f"Could not find location: {request.location}")
+        
+        # Process first date
+        date1_url = get_tile_url(
+            request.location, request.processing_type, PROJECT_ID,
+            None, request.date1, request.date1, None, None, None,
+            llm, LLM_INITIALIZED
+        )
+        
+        # Process second date
+        date2_url = get_tile_url(
+            request.location, request.processing_type, PROJECT_ID,
+            None, request.date2, request.date2, None, None, None,
+            llm, LLM_INITIALIZED
+        )
+        
+        if not date1_url or not date2_url:
+            return ApiResponse(success=False, message="Could not generate comparison images.")
+            
+        return ApiResponse(success=True, message="Comparison created", data={
+            "location": request.location,
+            "processing_type": request.processing_type,
+            "date1": request.date1,
+            "date2": request.date2,
+            "date1_url": date1_url,
+            "date2_url": date2_url
+        })
+    except Exception as e:
+        logging.exception("Error creating comparison")
+        return ApiResponse(success=False, message=f"Error: {e}")
+
+
 @app.get("/api/layers", response_model=List[LayerInfo])
 async def get_layers(request: Request):
-    """API endpoint to get layers."""
+    """API endpoint to get layers from the session."""
     return request.session.get("layers", [])
+
+
+@app.get("/api/saved-layers")
+async def get_saved_layers(user_id: Optional[str] = None, limit: int = 20, skip: int = 0):
+    """API endpoint to get saved layers from the database."""
+    if not DB_INITIALIZED:
+        raise HTTPException(status_code=503, detail="Database not available")
+        
+    layers = await get_user_layers(user_id, limit, skip)
+    return layers
+
+
+@app.get("/api/analyses")
+async def get_analyses(user_id: Optional[str] = None, limit: int = 20, skip: int = 0):
+    """API endpoint to get saved analyses from the database."""
+    if not DB_INITIALIZED:
+        raise HTTPException(status_code=503, detail="Database not available")
+        
+    analyses = await get_user_analyses(user_id, limit, skip)
+    return analyses
 
 
 @app.delete("/api/layers/{layer_id}")
 async def delete_layer(request: Request, layer_id: str):
-    """API endpoint to delete a layer."""
+    """API endpoint to delete a layer from the session."""
     layers = request.session.get("layers", [])
     updated_layers = [layer for layer in layers if layer["id"] != layer_id]
     request.session["layers"] = updated_layers
@@ -326,7 +566,7 @@ async def delete_layer(request: Request, layer_id: str):
 
 @app.post("/api/layers/clear")
 async def clear_layers(request: Request):
-    """API endpoint to clear layers."""
+    """API endpoint to clear layers from the session."""
     request.session["layers"] = []
     return {"success": True, "message": "All layers cleared"}
 
@@ -454,6 +694,36 @@ Longitude: [longitude or None]
     except Exception as e:
         logging.exception(f"Error analyzing prompt: {e}")
         return None
+
+
+async def save_analysis_and_layer(prompt: str, analysis_data: Dict[str, Any], user_id: Optional[str] = None):
+    """Background task to save analysis and layer to the database."""
+    try:
+        # Add user_id and prompt to analysis data
+        analysis_data["user_id"] = user_id
+        analysis_data["prompt"] = prompt
+        
+        # Save analysis result
+        analysis_id = await save_analysis_result(analysis_data)
+        
+        if analysis_id:
+            # Create layer data
+            layer_data = {
+                "name": f"{analysis_data['location']} {analysis_data['processing_type']}",
+                "location": analysis_data["location"],
+                "processing_type": analysis_data["processing_type"],
+                "tile_url": analysis_data["tile_url"],
+                "latitude": analysis_data.get("latitude"),
+                "longitude": analysis_data.get("longitude"),
+                "user_id": user_id,
+                "analysis_id": analysis_id
+            }
+            
+            # Save layer
+            await save_layer(layer_data)
+            logging.info(f"Saved analysis and layer for prompt: {prompt}")
+    except Exception as e:
+        logging.error(f"Error in background save task: {e}")
 
 
 if __name__ == "__main__":

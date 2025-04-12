@@ -1,180 +1,243 @@
 // src/components/Sidebar/Sidebar.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { ChevronLeft, ChevronRight, Plus, MessageCircle, MoreVertical } from 'lucide-react';
-import './sidebar.css';
+import { Menu, X, Layers, Trash2, Download, LineChart, Split, History } from 'lucide-react';
+import { useMap } from '../../contexts/MapContext';
+import { clearLayers, getSavedLayers, getAnalyses } from '../../services/api';
+import '../../styles/sidebar.css';
 
-const Sidebar = ({ showNotification }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [activeChat, setActiveChat] = useState(null);
+const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('layers');
+  const { layers, removeLayer, toggleLayerVisibility, setLayerOpacity } = useMap();
 
-  // Function to handle the creation of a new chat
-  const handleNewChat = () => {
-    const newChat = {
-      id: Date.now(),
-      title: "New conversation",
-      messages: [],
-      timestamp: new Date()
-    };
-    
-    setChatHistory(prev => [newChat, ...prev]);
-    setActiveChat(newChat.id);
-    showNotification("New chat created", "success");
+  const handleClearLayers = async () => {
+    try {
+      await clearLayers();
+      showNotification('All layers cleared', 'success');
+    } catch (error) {
+      showNotification(`Error clearing layers: ${error.message}`, 'error');
+    }
   };
 
-  // Listen for new prompts and update chat history
-  useEffect(() => {
-    // Listen for prompt submissions
-    const handlePromptSubmission = (event) => {
-      if (event.detail && event.detail.prompt) {
-        const { prompt, response } = event.detail;
-        
-        // Create a new chat if none is active
-        if (!activeChat) {
-          const newChat = {
-            id: Date.now(),
-            title: prompt.substring(0, 30) + (prompt.length > 30 ? '...' : ''),
-            messages: [
-              { type: 'user', content: prompt },
-              { type: 'system', content: response || 'Processing...' }
-            ],
-            timestamp: new Date()
-          };
-          
-          setChatHistory(prev => [newChat, ...prev]);
-          setActiveChat(newChat.id);
+  const handleLayerToggle = (layerId) => {
+    toggleLayerVisibility(layerId);
+  };
+
+  const handleLayerRemove = async (layerId) => {
+    try {
+      await removeLayer(layerId);
+      showNotification('Layer removed', 'success');
+    } catch (error) {
+      showNotification(`Error removing layer: ${error.message}`, 'error');
+    }
+  };
+
+  const handleOpacityChange = (layerId, opacity) => {
+    setLayerOpacity(layerId, opacity);
+  };
+
+  const handleToggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleLoadSavedLayers = async () => {
+    try {
+      const response = await getSavedLayers();
+      if (response.success && response.data) {
+        if (response.data.length === 0) {
+          showNotification('No saved layers found', 'info');
         } else {
-          // Update existing chat
-          setChatHistory(prev => prev.map(chat => {
-            if (chat.id === activeChat) {
-              // Update chat with new messages
-              const updatedChat = {
-                ...chat,
-                messages: [
-                  ...chat.messages,
-                  { type: 'user', content: prompt },
-                  { type: 'system', content: response || 'Processing...' }
-                ],
-                // Update title based on first prompt if it's a "New conversation"
-                title: chat.title === "New conversation" 
-                  ? prompt.substring(0, 30) + (prompt.length > 30 ? '...' : '')
-                  : chat.title
-              };
-              return updatedChat;
-            }
-            return chat;
-          }));
+          showNotification(`Loaded ${response.data.length} saved layers`, 'success');
+          // In a real implementation, we would load these layers onto the map
         }
+      } else {
+        showNotification('Failed to load saved layers', 'error');
       }
-    };
-
-    // Create a custom event listener for prompt submissions
-    window.addEventListener('prompt-submitted', handlePromptSubmission);
-    
-    return () => {
-      window.removeEventListener('prompt-submitted', handlePromptSubmission);
-    };
-  }, [activeChat, showNotification]);
-
-  const toggleSidebar = () => {
-    setIsExpanded(!isExpanded);
+    } catch (error) {
+      showNotification(`Error loading saved layers: ${error.message}`, 'error');
+    }
   };
 
-  const selectChat = (chatId) => {
-    setActiveChat(chatId);
+  const handleViewHistory = async () => {
+    try {
+      const response = await getAnalyses();
+      if (response.success && response.data) {
+        if (response.data.length === 0) {
+          showNotification('No analysis history found', 'info');
+        } else {
+          showNotification(`Found ${response.data.length} past analyses`, 'success');
+          // In a real implementation, we would display these analyses
+        }
+      } else {
+        showNotification('Failed to load analysis history', 'error');
+      }
+    } catch (error) {
+      showNotification(`Error loading history: ${error.message}`, 'error');
+    }
+  };
+
+  const handleTimeSeriesClick = () => {
+    toggleTimeSeries();
+  };
+
+  const handleComparisonClick = () => {
+    toggleComparison();
   };
 
   return (
-    <div className={`fixed left-0 sidebar-with-topbar bg-background-dark z-10 transition-all duration-300 border-r border-background-light/10 ${isExpanded ? 'w-72' : 'w-12'}`}>
-      {/* Sidebar Toggle (only shown when collapsed) */}
-      {!isExpanded && (
-        <button 
-          onClick={toggleSidebar}
-          className="absolute top-4 left-0 right-0 text-google-grey-300 hover:text-white p-1 mx-auto flex justify-center"
-        >
-          <ChevronRight size={20} />
-        </button>
-      )}
+    <>
+      <button 
+        className="sidebar-toggle"
+        onClick={handleToggleSidebar}
+        aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
+      >
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
 
-      {/* Sidebar Content - only shown when expanded */}
-      {isExpanded && (
-        <div className="flex flex-col h-full">
-          {/* New Chat Button - Now placed at the top */}
-          <div className="px-3 pt-4 pb-4">
-            <button 
-              className="w-full bg-google-red/80 hover:bg-google-red text-white rounded-full py-1.5 px-3 flex items-center justify-center gap-1 transition-colors text-sm font-medium"
-              onClick={handleNewChat}
-            >
-              <Plus size={16} />
-              <span>New chat</span>
-            </button>
-          </div>
-
-          {/* Chats Navigation */}
-          <div className="mb-1">
-            <button className="flex items-center w-full px-3 py-2 text-sm text-white bg-background-light/20 hover:bg-background-light/30">
-              <MessageCircle size={16} className="mr-3" />
-              <span>Chats</span>
-            </button>
-          </div>
-
-          {/* Recents Section */}
-          <div className="mt-3">
-            <h3 className="px-4 text-xs font-medium text-google-grey-400">Recents</h3>
-          </div>
-
-          {/* Chat History Section */}
-          <div className="flex-1 overflow-y-auto scrollbar-custom mt-1 px-2">
-            {chatHistory.length > 0 ? (
-              <div className="space-y-0.5">
-                {chatHistory.map(chat => (
-                  <div 
-                    key={chat.id} 
-                    className={`chat-item group ${chat.id === activeChat ? 'bg-background-light/20' : ''}`}
-                    onClick={() => selectChat(chat.id)}
-                  >
-                    <span className="truncate text-sm">{chat.title}</span>
-                    
-                    <button 
-                      className="p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChatHistory(prev => prev.filter(c => c.id !== chat.id));
-                        if (activeChat === chat.id) {
-                          setActiveChat(null);
-                        }
-                      }}
-                    >
-                      <MoreVertical size={14} className="text-google-grey-300" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-google-grey-400 text-xs py-4 px-4">
-                No recent chats
-              </div>
-            )}
-          </div>
-          
-          {/* Toggle button at bottom */}
-          <div className="p-2 mt-auto border-t border-background-light/10">
-            <button 
-              onClick={toggleSidebar}
-              className="flex items-center justify-end w-full text-google-grey-400 hover:text-white text-xs p-1"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          </div>
+      <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <h2>Geo Gemma</h2>
         </div>
-      )}
-    </div>
+
+        <div className="sidebar-tabs">
+          <button 
+            className={`sidebar-tab ${activeTab === 'layers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('layers')}
+          >
+            <Layers size={16} /> Layers
+          </button>
+          <button 
+            className={`sidebar-tab ${activeTab === 'tools' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tools')}
+          >
+            Tools
+          </button>
+          <button 
+            className={`sidebar-tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <History size={16} /> History
+          </button>
+        </div>
+
+        <div className="sidebar-content">
+          {activeTab === 'layers' && (
+            <div className="layers-panel">
+              <div className="layers-header">
+                <h3>Map Layers</h3>
+                <button 
+                  className="action-button"
+                  onClick={handleClearLayers}
+                  title="Clear all layers"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              {layers.length === 0 ? (
+                <p className="empty-message">No layers added yet. Use the search bar to add layers.</p>
+              ) : (
+                <ul className="layers-list">
+                  {layers.map((layer) => (
+                    <li key={layer.id} className="layer-item">
+                      <div className="layer-header">
+                        <label className="layer-toggle">
+                          <input 
+                            type="checkbox"
+                            checked={layer.visibility !== 'none'}
+                            onChange={() => handleLayerToggle(layer.id)}
+                          />
+                          <span className="layer-name">{layer.location}</span>
+                        </label>
+                        <button 
+                          className="layer-remove"
+                          onClick={() => handleLayerRemove(layer.id)}
+                          title="Remove layer"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="layer-details">
+                        <span className="layer-type">{layer.processing_type}</span>
+                        <div className="layer-opacity">
+                          <span>Opacity:</span>
+                          <input 
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={layer.opacity || 0.8}
+                            onChange={(e) => handleOpacityChange(layer.id, parseFloat(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'tools' && (
+            <div className="tools-panel">
+              <h3>Analysis Tools</h3>
+              <div className="tools-grid">
+                <button
+                  className="tool-button"
+                  onClick={handleTimeSeriesClick}
+                  title="Time Series Analysis"
+                >
+                  <LineChart size={24} />
+                  <span>Time Series</span>
+                </button>
+                <button
+                  className="tool-button"
+                  onClick={handleComparisonClick}
+                  title="Comparison Analysis"
+                >
+                  <Split size={24} />
+                  <span>Compare</span>
+                </button>
+                <button
+                  className="tool-button"
+                  onClick={() => showNotification('Export feature coming soon', 'info')}
+                  title="Export Data"
+                >
+                  <Download size={24} />
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="history-panel">
+              <h3>Analysis History</h3>
+              <button
+                className="history-button"
+                onClick={handleViewHistory}
+              >
+                <History size={16} /> View Past Analyses
+              </button>
+              <button
+                className="history-button"
+                onClick={handleLoadSavedLayers}
+              >
+                <Layers size={16} /> Load Saved Layers
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 
 Sidebar.propTypes = {
-  showNotification: PropTypes.func.isRequired
+  showNotification: PropTypes.func.isRequired,
+  toggleTimeSeries: PropTypes.func.isRequired,
+  toggleComparison: PropTypes.func.isRequired
 };
 
 export default Sidebar;
