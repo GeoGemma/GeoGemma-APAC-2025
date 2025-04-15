@@ -4,5 +4,6 @@ from . import ndvi
 from . import water
 from . import lulc
 from . import lst
+from . import openbuildings
 
-__all__ = ["rgb", "ndvi", "water", "lulc", "lst"]
+__all__ = ["rgb", "ndvi", "water", "lulc", "lst", "openbuildings"]

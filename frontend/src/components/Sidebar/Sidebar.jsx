@@ -1,173 +1,243 @@
 // src/components/Sidebar/Sidebar.jsx
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { ChevronLeft, ChevronRight, Menu, Ruler, Layers, Info, Trash2 } from 'lucide-react';
+import { Menu, X, Layers, Trash2, Download, LineChart, Split, History } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
-import LayersList from './LayersList';
-import MeasureToolControl from '../Map/MeasureToolControl';
-import { clearLayers as clearLayersApi } from '../../services/api';
-import './sidebar.css';
+import { clearLayers, getSavedLayers, getAnalyses } from '../../services/api';
+import '../../styles/sidebar.css';
 
-const Sidebar = ({ showNotification }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(null);
-  const { clearLayers } = useMap();
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const toggleSection = (section) => {
-    if (activeSection === section) {
-      setActiveSection(null);
-    } else {
-      setActiveSection(section);
-    }
-  };
+const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('layers');
+  const { layers, removeLayer, toggleLayerVisibility, setLayerOpacity } = useMap();
 
   const handleClearLayers = async () => {
     try {
-      await clearLayersApi();
-      clearLayers();
-      showNotification('All layers cleared successfully', 'success');
+      await clearLayers();
+      showNotification('All layers cleared', 'success');
     } catch (error) {
-      showNotification('Error clearing layers', 'error');
+      showNotification(`Error clearing layers: ${error.message}`, 'error');
     }
   };
 
-  return (
-    <div className={`fixed top-0 left-0 h-full bg-gray-900 shadow-lg transition-all duration-300 z-10 ${isSidebarOpen ? 'w-64' : 'w-16'}`}>
-      {/* Logo Section */}
-<div className="border-b border-gray-700 flex justify-center py-4">
-  {isSidebarOpen ? (
-    <div className="flex items-center justify-between w-full px-4">
-      <div className="flex items-center">
-        {/* Logo image */}
-        <img 
-          src="/geoshort.png" 
-          alt="GeoGemma Logo" 
-          className="h-8 w-8 object-contain"
-        />
-        <span className="ml-2 text-white font-semibold">GeoGemma</span>
-      </div>
-      <button onClick={toggleSidebar} className="text-gray-400 hover:text-white">
-        <ChevronLeft size={20} />
-      </button>
-    </div>
-  ) : (
-    <div className="flex justify-center w-full">
-      {/* Collapsed logo */}
-      <img 
-        src="/geoshort.png" 
-        alt="GeoGemma Logo" 
-        className="h-8 w-8 object-contain"
-      />
-    </div>
-  )}
-</div>
+  const handleLayerToggle = (layerId) => {
+    toggleLayerVisibility(layerId);
+  };
 
-      {/* Main Sidebar Content */}
-      <div className="flex flex-col">
-        {/* Expand/Collapse button for small sidebar */}
-        {!isSidebarOpen && (
+  const handleLayerRemove = async (layerId) => {
+    try {
+      await removeLayer(layerId);
+      showNotification('Layer removed', 'success');
+    } catch (error) {
+      showNotification(`Error removing layer: ${error.message}`, 'error');
+    }
+  };
+
+  const handleOpacityChange = (layerId, opacity) => {
+    setLayerOpacity(layerId, opacity);
+  };
+
+  const handleToggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleLoadSavedLayers = async () => {
+    try {
+      const response = await getSavedLayers();
+      if (response.success && response.data) {
+        if (response.data.length === 0) {
+          showNotification('No saved layers found', 'info');
+        } else {
+          showNotification(`Loaded ${response.data.length} saved layers`, 'success');
+          // In a real implementation, we would load these layers onto the map
+        }
+      } else {
+        showNotification('Failed to load saved layers', 'error');
+      }
+    } catch (error) {
+      showNotification(`Error loading saved layers: ${error.message}`, 'error');
+    }
+  };
+
+  const handleViewHistory = async () => {
+    try {
+      const response = await getAnalyses();
+      if (response.success && response.data) {
+        if (response.data.length === 0) {
+          showNotification('No analysis history found', 'info');
+        } else {
+          showNotification(`Found ${response.data.length} past analyses`, 'success');
+          // In a real implementation, we would display these analyses
+        }
+      } else {
+        showNotification('Failed to load analysis history', 'error');
+      }
+    } catch (error) {
+      showNotification(`Error loading history: ${error.message}`, 'error');
+    }
+  };
+
+  const handleTimeSeriesClick = () => {
+    toggleTimeSeries();
+  };
+
+  const handleComparisonClick = () => {
+    toggleComparison();
+  };
+
+  return (
+    <>
+      <button 
+        className="sidebar-toggle"
+        onClick={handleToggleSidebar}
+        aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
+      >
+        {isOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <h2>Geo Gemma</h2>
+        </div>
+
+        <div className="sidebar-tabs">
           <button 
-            className="mt-2 mx-auto text-gray-400 hover:text-white p-2" 
-            onClick={toggleSidebar}
+            className={`sidebar-tab ${activeTab === 'layers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('layers')}
           >
-            <ChevronRight size={20} />
+            <Layers size={16} /> Layers
           </button>
-        )}
-        
-        {/* Tool Icons */}
-        <div className="flex flex-col items-center py-5 gap-4">
-          <div 
-            className={`sidebar-tool-icon ${activeSection === 'measure' ? 'bg-blue-900/50' : 'bg-gray-800/60'}`}
-            title="Measure"
-            onClick={() => toggleSection('measure')}
+          <button 
+            className={`sidebar-tab ${activeTab === 'tools' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tools')}
           >
-            <Ruler size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm">Measure</span>}
-          </div>
-          
-          <div 
-            className={`sidebar-tool-icon ${activeSection === 'layers' ? 'bg-blue-900/50' : 'bg-gray-800/60'}`}
-            title="Layer Control"
-            onClick={() => toggleSection('layers')}
+            Tools
+          </button>
+          <button 
+            className={`sidebar-tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
           >
-            <Layers size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm">Layers</span>}
-          </div>
-          
-          <div 
-            className="sidebar-tool-icon bg-gray-800/60"
-            title="Feature Information"
-          >
-            <Info size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm">Information</span>}
-          </div>
-          
-          <div 
-            className="sidebar-tool-icon bg-red-900/30 hover:bg-red-800/50 mt-4"
-            title="Clear Layers"
-            onClick={handleClearLayers}
-          >
-            <Trash2 size={20} />
-            {isSidebarOpen && <span className="ml-3 text-sm">Clear Layers</span>}
-          </div>
+            <History size={16} /> History
+          </button>
+        </div>
+
+        <div className="sidebar-content">
+          {activeTab === 'layers' && (
+            <div className="layers-panel">
+              <div className="layers-header">
+                <h3>Map Layers</h3>
+                <button 
+                  className="action-button"
+                  onClick={handleClearLayers}
+                  title="Clear all layers"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              {layers.length === 0 ? (
+                <p className="empty-message">No layers added yet. Use the search bar to add layers.</p>
+              ) : (
+                <ul className="layers-list">
+                  {layers.map((layer) => (
+                    <li key={layer.id} className="layer-item">
+                      <div className="layer-header">
+                        <label className="layer-toggle">
+                          <input 
+                            type="checkbox"
+                            checked={layer.visibility !== 'none'}
+                            onChange={() => handleLayerToggle(layer.id)}
+                          />
+                          <span className="layer-name">{layer.location}</span>
+                        </label>
+                        <button 
+                          className="layer-remove"
+                          onClick={() => handleLayerRemove(layer.id)}
+                          title="Remove layer"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="layer-details">
+                        <span className="layer-type">{layer.processing_type}</span>
+                        <div className="layer-opacity">
+                          <span>Opacity:</span>
+                          <input 
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={layer.opacity || 0.8}
+                            onChange={(e) => handleOpacityChange(layer.id, parseFloat(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'tools' && (
+            <div className="tools-panel">
+              <h3>Analysis Tools</h3>
+              <div className="tools-grid">
+                <button
+                  className="tool-button"
+                  onClick={handleTimeSeriesClick}
+                  title="Time Series Analysis"
+                >
+                  <LineChart size={24} />
+                  <span>Time Series</span>
+                </button>
+                <button
+                  className="tool-button"
+                  onClick={handleComparisonClick}
+                  title="Comparison Analysis"
+                >
+                  <Split size={24} />
+                  <span>Compare</span>
+                </button>
+                <button
+                  className="tool-button"
+                  onClick={() => showNotification('Export feature coming soon', 'info')}
+                  title="Export Data"
+                >
+                  <Download size={24} />
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="history-panel">
+              <h3>Analysis History</h3>
+              <button
+                className="history-button"
+                onClick={handleViewHistory}
+              >
+                <History size={16} /> View Past Analyses
+              </button>
+              <button
+                className="history-button"
+                onClick={handleLoadSavedLayers}
+              >
+                <Layers size={16} /> Load Saved Layers
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      
-      {/* Panel Content */}
-      {isSidebarOpen && (
-        <div className="px-2">
-          {/* Layers Panel */}
-          {activeSection === 'layers' && (
-            <div className="bg-gray-800/70 rounded-md overflow-hidden">
-              <h3 className="text-center text-sm border-b border-gray-700 py-2 bg-gray-800">Layers</h3>
-              <div className="max-h-[60vh] overflow-y-auto">
-                <LayersList showNotification={showNotification} />
-              </div>
-            </div>
-          )}
-          
-          {/* Measure Tools Panel */}
-          {activeSection === 'measure' && (
-            <div className="bg-gray-800/70 rounded-md overflow-hidden">
-              <h3 className="text-center text-sm border-b border-gray-700 py-2 bg-gray-800">Measure</h3>
-              <div className="p-2">
-                <MeasureToolControl showNotification={showNotification} />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 
 Sidebar.propTypes = {
-  showNotification: PropTypes.func.isRequired
+  showNotification: PropTypes.func.isRequired,
+  toggleTimeSeries: PropTypes.func.isRequired,
+  toggleComparison: PropTypes.func.isRequired
 };
-
-// Add this CSS to your global styles or create a new CSS module
-const styles = `
-.sidebar-tool-icon {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 90%;
-}
-
-.sidebar-tool-icon:hover {
-  background-color: rgba(59, 130, 246, 0.5);
-}
-`;
-
-// You can add this to your component as a style tag if needed
-// or import it as a CSS module
 
 export default Sidebar;

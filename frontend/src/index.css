@@ -1,121 +1,185 @@
 /* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-background-dark text-white overflow-hidden;
-  }
+:root {
+  --color-primary: 37, 99, 235;
+  --color-secondary: 16, 185, 129;
+  --color-background: 249, 250, 251;
+  --color-surface: 255, 255, 255;
+  --color-text: 31, 41, 55;
+  --color-text-light: 107, 114, 128;
+  --color-accent: 245, 158, 11;
+  --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.12);
+  --transition-default: all 0.3s ease;
+  --transition-fast: all 0.15s ease;
+  --transition-slow: all 0.5s ease;
+  --radius-default: 0.375rem;
+  --radius-large: 0.75rem;
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-text));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Modern scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Focus styles */
+:focus {
+  outline: 2px solid rgba(var(--color-primary), 0.5);
+  outline-offset: 2px;
+}
+
+/* Global animation classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.slide-down {
+  animation: slideDown 0.4s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Common component styling */
 @layer components {
-  .map-container {
-    @apply h-screen w-full;
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
   
-  .sidebar-icon {
-    @apply p-3 text-white cursor-pointer text-xl mb-3 transition-all rounded-md w-10 h-10 flex items-center justify-center shadow-md hover:bg-white/15 hover:-translate-y-0.5;
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark focus:ring-primary;
   }
   
-  .sidebar-icon.active {
-    @apply bg-primary/80;
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary;
   }
   
-  /* .prompt-input {
-    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:shadow-outline;
-  } */
-
-  .prompt-input {
-    @apply flex-1 p-3 border-none rounded bg-background-light text-white text-base transition-colors focus:bg-opacity-80 outline-none focus:ring-2 focus:ring-primary/50;
+  .btn-outline {
+    @apply border border-gray-300 hover:bg-gray-50 focus:ring-primary;
   }
   
-  .prompt-button {
-    @apply p-3 bg-primary text-white border-none rounded cursor-pointer text-base flex items-center justify-center ml-1 transition-all hover:bg-primary-dark active:scale-95;
+  .card {
+    @apply bg-white rounded-lg shadow-card hover:shadow-card-hover transition-all p-4;
   }
   
-  .layer-item {
-    @apply my-2 p-2 bg-white/10 rounded transition-colors hover:bg-white/20;
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
   }
   
-  .layer-control-button {
-    @apply bg-transparent border-none cursor-pointer text-white transition-transform hover:scale-110 hover:opacity-80 w-6 h-6 flex items-center justify-center ml-1;
+  .dropdown {
+    @apply bg-white rounded-md shadow-md p-1 border border-gray-100;
+  }
+  
+  .dropdown-item {
+    @apply px-3 py-2 rounded hover:bg-gray-50 cursor-pointer flex items-center gap-2;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply bg-primary-light text-primary-dark;
+  }
+  
+  .badge-secondary {
+    @apply bg-secondary-light text-secondary-dark;
+  }
+  
+  .tooltip {
+    @apply absolute bg-gray-800 text-white px-2 py-1 rounded text-sm z-50 whitespace-nowrap;
   }
 }
 
-/* Custom Scrollbar */
-@layer utilities {
-  .scrollbar-custom {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
-  }
-  
-  .scrollbar-custom::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  .scrollbar-custom::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-  
-  .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-  }
-  
-  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-}
-
-/* MapLibre Overrides */
-.maplibregl-ctrl button {
-  @apply w-8 h-8;
-}
-
-.maplibregl-ctrl-group {
-  @apply bg-background-sidebar !important;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.maplibregl-ctrl button {
-  @apply bg-transparent border-none text-white !important;
-}
-
-.maplibregl-ctrl button:hover {
-  @apply bg-white/15 !important;
-}
-
-.maplibregl-ctrl button.active {
-  @apply bg-primary/80 !important;
+/* Map-specific styling */
+.maplibregl-popup {
+  max-width: 300px !important;
 }
 
 .maplibregl-popup-content {
-  @apply bg-background-sidebar/90 text-white !important;
+  padding: 12px !important;
+  border-radius: var(--radius-default) !important;
+  box-shadow: var(--shadow-card) !important;
+  font-family: 'Inter', sans-serif !important;
 }
 
-.maplibregl-popup-close-button {
-  @apply text-white !important;
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border-radius: var(--radius-default) !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
-/* Animation */
+.maplibregl-ctrl-group button {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+/* Responsive utilities */
+.main-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animation keyframes */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
-.slide-in {
-  animation: slideIn 0.3s ease-out;
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }

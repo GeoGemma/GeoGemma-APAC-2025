@@ -12,3 +12,7 @@ google-auth
 itsdangerous
 requests
 typing-extensions
+pymongo
+motor
+beanie
+fastapi-users[mongodb]

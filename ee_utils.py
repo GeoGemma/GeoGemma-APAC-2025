@@ -4,10 +4,12 @@ import re
 import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from ee_modules import rgb, ndvi, water, lulc, lst
+from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings
 import google.auth.credentials
 from functools import lru_cache
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, List, Union, Any
+import datetime
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -197,6 +199,8 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
                 logging.error("Year must be specified for LST processing.")
                 return None, None
             image, vis_params = lst.add_landsat_lst(geometry, year)
+        elif processing_type == 'OPEN BUILDINGS':
+            image, vis_params = openbuildings.add_open_buildings(geometry)
         else:
             logging.warning(f"Invalid processing type: {processing_type}")
             return None, None
@@ -245,4 +249,243 @@ def get_tile_url(location: str, processing_type: str, project_id: str, satellite
 
     except Exception as e:
         logging.error(f"Error in get_tile_url: {e}")
+        return None
+
+
+def process_time_series(geometry: ee.Geometry, processing_type: str, start_date: str, end_date: str, 
+                       interval: str = "monthly", project_id: str = None) -> List[Dict[str, Any]]:
+    """
+    Process a time series of images for a given location and processing type.
+    
+    Args:
+        geometry: Earth Engine geometry object
+        processing_type: Type of processing (RGB, NDVI, etc.)
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        interval: Time interval ('daily', 'weekly', 'monthly', 'yearly')
+        project_id: GCP project ID
+        
+    Returns:
+        List of dictionaries with time series data and URLs
+    """
+    try:
+        # Parse dates
+        start = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Generate date intervals
+        dates = []
+        if interval == 'daily':
+            # For daily, create a list of dates from start to end
+            delta = datetime.timedelta(days=1)
+            current = start
+            while current <= end:
+                dates.append(current.strftime('%Y-%m-%d'))
+                current += delta
+        elif interval == 'weekly':
+            # For weekly, create dates at 7-day intervals
+            delta = datetime.timedelta(days=7)
+            current = start
+            while current <= end:
+                dates.append(current.strftime('%Y-%m-%d'))
+                current += delta
+        elif interval == 'monthly':
+            # For monthly, create dates at the 1st of each month
+            current = datetime.datetime(start.year, start.month, 1)
+            while current <= end:
+                dates.append(current.strftime('%Y-%m-%d'))
+                # Move to next month (handle year rollover)
+                if current.month == 12:
+                    current = datetime.datetime(current.year + 1, 1, 1)
+                else:
+                    current = datetime.datetime(current.year, current.month + 1, 1)
+        elif interval == 'yearly':
+            # For yearly, create dates at the 1st of January each year
+            for year in range(start.year, end.year + 1):
+                dates.append(f"{year}-01-01")
+        else:
+            logging.error(f"Invalid interval: {interval}")
+            return []
+            
+        logging.info(f"Generated {len(dates)} dates for time series")
+        
+        # Process each date and generate time series data
+        results = []
+        for i, date_str in enumerate(dates):
+            logging.info(f"Processing time series date {i+1}/{len(dates)}: {date_str}")
+            
+            # For RGB and simple visualizations, we need a small date range
+            # For intervals like NDVI, we might want to use a range
+            date_end = date_str
+            
+            # For monthly/yearly, use the entire month/year
+            if interval == 'monthly':
+                date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+                if date_obj.month == 12:
+                    next_month = datetime.datetime(date_obj.year + 1, 1, 1) - datetime.timedelta(days=1)
+                else:
+                    next_month = datetime.datetime(date_obj.year, date_obj.month + 1, 1) - datetime.timedelta(days=1)
+                date_end = next_month.strftime('%Y-%m-%d')
+            elif interval == 'yearly':
+                date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+                date_end = f"{date_obj.year}-12-31"
+                
+            # Extract year for LST processing
+            year = datetime.datetime.strptime(date_str, '%Y-%m-%d').year
+                
+            # Get image and visualization parameters
+            image, vis_params = process_image(geometry, processing_type, None, date_str, date_end, year)
+            
+            if image is not None and vis_params is not None:
+                # Get tile URL
+                tile_url = get_clipped_tile_url(image, geometry, vis_params, project_id)
+                
+                # For certain processing types, calculate statistics
+                stats = None
+                if processing_type == 'NDVI':
+                    stats = calculate_ndvi_stats(image, geometry)
+                elif processing_type == 'LST':
+                    stats = calculate_lst_stats(image, geometry)
+                
+                # Save result including date, URL and stats
+                result = {
+                    'date': date_str,
+                    'end_date': date_end,
+                    'tile_url': tile_url,
+                    'statistics': stats
+                }
+                results.append(result)
+            else:
+                logging.warning(f"Could not process image for date: {date_str}")
+                # Add placeholder for missing data
+                results.append({
+                    'date': date_str,
+                    'end_date': date_end,
+                    'tile_url': None,
+                    'statistics': None,
+                    'error': 'Could not process image for this date'
+                })
+        
+        return results
+    except Exception as e:
+        logging.exception(f"Error processing time series: {e}")
+        return []
+
+
+def calculate_ndvi_stats(image: ee.Image, geometry: ee.Geometry) -> Dict[str, Any]:
+    """Calculate NDVI statistics for an image within a geometry."""
+    try:
+        # Calculate statistics using Earth Engine
+        reducer = ee.Reducer.mean().combine(
+            reducer2=ee.Reducer.stdDev(),
+            sharedInputs=True
+        ).combine(
+            reducer2=ee.Reducer.minMax(),
+            sharedInputs=True
+        )
+        
+        stats = image.reduceRegion(
+            reducer=reducer,
+            geometry=geometry,
+            scale=30,  # 30m resolution for Sentinel-2
+            maxPixels=1e9
+        ).getInfo()
+        
+        # Format the results
+        return {
+            'mean': stats.get('NDVI_mean'),
+            'std_dev': stats.get('NDVI_stdDev'),
+            'min': stats.get('NDVI_min'),
+            'max': stats.get('NDVI_max')
+        }
+    except Exception as e:
+        logging.error(f"Error calculating NDVI stats: {e}")
+        return None
+
+
+def calculate_lst_stats(image: ee.Image, geometry: ee.Geometry) -> Dict[str, Any]:
+    """Calculate land surface temperature statistics for an image within a geometry."""
+    try:
+        # Calculate statistics using Earth Engine
+        reducer = ee.Reducer.mean().combine(
+            reducer2=ee.Reducer.stdDev(),
+            sharedInputs=True
+        ).combine(
+            reducer2=ee.Reducer.minMax(),
+            sharedInputs=True
+        )
+        
+        stats = image.reduceRegion(
+            reducer=reducer,
+            geometry=geometry,
+            scale=30,  # 30m resolution
+            maxPixels=1e9
+        ).getInfo()
+        
+        # Format the results
+        return {
+            'mean': stats.get('LST_mean'),
+            'std_dev': stats.get('LST_stdDev'),
+            'min': stats.get('LST_min'),
+            'max': stats.get('LST_max')
+        }
+    except Exception as e:
+        logging.error(f"Error calculating LST stats: {e}")
+        return None
+
+
+def get_area_statistics(geometry: ee.Geometry, image_collection: str, band_name: str, 
+                       start_date: str, end_date: str) -> Dict[str, Any]:
+    """
+    Get statistics for a custom area and time period.
+    
+    Args:
+        geometry: Earth Engine geometry
+        image_collection: Name of EE image collection
+        band_name: Band to analyze
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        
+    Returns:
+        Dictionary with area statistics
+    """
+    try:
+        # Load the image collection
+        collection = ee.ImageCollection(image_collection)\
+            .filterDate(start_date, end_date)\
+            .filterBounds(geometry)\
+            .select(band_name)
+        
+        # Calculate mean over time
+        mean_image = collection.mean()
+        
+        # Calculate statistics
+        stats = mean_image.reduceRegion(
+            reducer=ee.Reducer.mean().combine(
+                reducer2=ee.Reducer.stdDev(),
+                sharedInputs=True
+            ).combine(
+                reducer2=ee.Reducer.minMax(),
+                sharedInputs=True
+            ),
+            geometry=geometry,
+            scale=30,
+            maxPixels=1e9
+        ).getInfo()
+        
+        # Calculate area
+        area_m2 = geometry.area().getInfo()
+        area_km2 = area_m2 / 1000000
+        
+        return {
+            'statistics': stats,
+            'area_m2': area_m2,
+            'area_km2': area_km2,
+            'timespan': {
+                'start_date': start_date,
+                'end_date': end_date
+            }
+        }
+    except Exception as e:
+        logging.exception(f"Error calculating area statistics: {e}")
         return None
