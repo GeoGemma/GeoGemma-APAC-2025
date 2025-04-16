@@ -13,24 +13,24 @@ import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
 import DrawingTools from './components/Map/DrawingTools.jsx';
 import './styles/font.css';
 
-// Define custom CSS variables for the theme
+// Define custom CSS variables for the Google theme
 const GlobalStyles = () => {
   useEffect(() => {
-    // Add CSS variables to root
-    document.documentElement.style.setProperty('--color-primary', '100, 255, 218'); // teal
-    document.documentElement.style.setProperty('--color-bg-dark', '10, 25, 47'); // dark blue
-    document.documentElement.style.setProperty('--color-bg-medium', '23, 42, 70'); // medium blue
-    document.documentElement.style.setProperty('--color-bg-light', '15, 23, 42'); // light blue
-    document.documentElement.style.setProperty('--color-accent', '255, 107, 107'); // coral accent
-    document.documentElement.style.setProperty('--color-text', '255, 255, 255'); // white text
-    document.documentElement.style.setProperty('--color-text-light', '247, 250, 252'); // light gray text
-    document.documentElement.style.setProperty('--color-error', '255, 107, 107'); // error color
-    document.documentElement.style.setProperty('--color-success', '34, 197, 94'); // success color
+    // Add CSS variables to root - Google Dark Theme
+    document.documentElement.style.setProperty('--color-primary', '138, 180, 248'); // Google blue #8ab4f8
+    document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24'); // Google dark background #181818 - updated
+    document.documentElement.style.setProperty('--color-bg-medium', '48, 49, 52'); // Google dark surface #303134
+    document.documentElement.style.setProperty('--color-bg-light', '60, 64, 67'); // Slightly lighter surface #3c4043
+    document.documentElement.style.setProperty('--color-accent', '253, 214, 99'); // Google yellow #fdd663
+    document.documentElement.style.setProperty('--color-text', '232, 234, 237'); // Google light text #e8eaed
+    document.documentElement.style.setProperty('--color-text-light', '154, 160, 166'); // Google secondary text #9aa0a6
+    document.documentElement.style.setProperty('--color-error', '242, 139, 130'); // Google red #f28b82
+    document.documentElement.style.setProperty('--color-success', '129, 201, 149'); // Google green #81c995
     document.documentElement.style.setProperty('--transition-default', 'all 0.2s ease'); // transitions
 
-    // Update body background
-    document.body.style.backgroundColor = '#0a192f';
-    document.body.style.color = 'white';
+    // Update body background to Google dark theme
+    document.body.style.backgroundColor = '#181818'; // Updated to #181818
+    document.body.style.color = '#e8eaed';
   }, []);
 
   return null;

@@ -2,7 +2,18 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
-import { Layers, BarChart2, History, Download, GitCompare, Clock } from 'lucide-react';
+import { 
+  Layers, 
+  BarChart2, 
+  History, 
+  Download, 
+  GitCompare, 
+  Clock, 
+  Settings,
+  HelpCircle,
+  Info,
+  User
+} from 'lucide-react';
 import '../../styles/header.css';
 
 const Layout = ({ children, toggleTimeSeries, toggleComparison }) => {
@@ -10,10 +21,33 @@ const Layout = ({ children, toggleTimeSeries, toggleComparison }) => {
 
   return (
     <div className="layout-container">
+      {/* Top header - Google style */}
+      <div className="top-header">
+        <div className="top-header-logo">
+          <img src="/geoshort.png" alt="GeoGemma Logo" />
+          <h1 className="top-header-title">GeoGemma</h1>
+        </div>
+        <div className="top-header-actions">
+          <button className="top-header-button" title="Settings">
+            <Settings size={20} />
+          </button>
+          <button className="top-header-button" title="Help">
+            <HelpCircle size={20} />
+          </button>
+          <button className="top-header-button" title="About">
+            <Info size={20} />
+          </button>
+          <button className="top-header-button" title="Account">
+            <User size={20} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Side navigation */}
       <header className="app-header">
         <div className="logo-container">
           <Link to="/" className="app-logo">
-            GeoGemma
+            G
           </Link>
         </div>
         
@@ -24,7 +58,7 @@ const Layout = ({ children, toggleTimeSeries, toggleComparison }) => {
               onClick={() => setActiveTab('layers')}
               title="Layers"
             >
-              <Layers size={22} />
+              <Layers size={20} />
               <span className="text-xs mt-1">Layers</span>
             </div>
             <div 
@@ -32,7 +66,7 @@ const Layout = ({ children, toggleTimeSeries, toggleComparison }) => {
               onClick={() => setActiveTab('analysis')}
               title="Analysis"
             >
-              <BarChart2 size={22} />
+              <BarChart2 size={20} />
               <span className="text-xs mt-1">Analysis</span>
             </div>
             <div 
@@ -40,7 +74,7 @@ const Layout = ({ children, toggleTimeSeries, toggleComparison }) => {
               onClick={() => setActiveTab('history')}
               title="History"
             >
-              <History size={22} />
+              <History size={20} />
               <span className="text-xs mt-1">History</span>
             </div>
           </div>

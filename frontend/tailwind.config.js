@@ -7,55 +7,88 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Google-inspired color palette
+        'google-bg': {
+          DEFAULT: '#181818', // Google dark background - updated to #181818
+          light: '#303134',   // Google dark surface
+          lighter: '#3c4043', // Slightly lighter shade for hover states
+        },
+        'google-blue': {
+          DEFAULT: '#8ab4f8', // Google's primary blue in dark mode
+          light: '#aecbfa',   // Lighter blue for hover states
+          dark: '#669df6',    // Darker blue for active states
+        },
+        'google-green': {
+          DEFAULT: '#81c995', // Google's green accent
+          light: '#a8dab5',   // Lighter green
+          dark: '#5bb974',    // Darker green
+        },
+        'google-red': {
+          DEFAULT: '#f28b82',  // Google's red
+          light: '#f6aea9',    // Lighter red
+          dark: '#ee675c',     // Darker red
+        },
+        'google-yellow': {
+          DEFAULT: '#fdd663',  // Google's yellow
+          light: '#fee599',    // Lighter yellow
+          dark: '#fcc934',     // Darker yellow
+        },
+        'google-grey': {
+          100: '#e8eaed',      // Primary text in dark mode
+          200: '#bdc1c6',      // Mid-gray text
+          300: '#9aa0a6',      // Secondary text
+          400: '#5f6368',      // Subtle text
+        },
+        // Legacy theme colors (remapped to Google palette)
         primary: {
-          DEFAULT: '#2563EB', // Blue-600
-          light: '#93C5FD', // Blue-300
-          dark: '#1D4ED8', // Blue-700
+          DEFAULT: '#8ab4f8', // Google blue
+          light: '#aecbfa',   // Light blue
+          dark: '#669df6',    // Dark blue
         },
         secondary: {
-          DEFAULT: '#10B981', // Emerald-500
-          light: '#6EE7B7', // Emerald-300
-          dark: '#059669', // Emerald-600
+          DEFAULT: '#81c995', // Google green
+          light: '#a8dab5',   // Light green
+          dark: '#5bb974',    // Dark green
         },
         background: {
-          DEFAULT: '#F9FAFB', // Gray-50
-          dark: '#1F2937', // Gray-800
-          light: '#F3F4F6', // Gray-100
+          DEFAULT: '#181818', // Google dark background - updated to #181818
+          dark: '#181818',    // Dark - updated to #181818
+          light: '#303134',   // Lighter
         },
         surface: {
-          DEFAULT: '#FFFFFF',
-          dark: '#374151', // Gray-700
-          light: '#F9FAFB', // Gray-50
+          DEFAULT: '#303134', // Google dark surface
+          dark: '#3c4043',    // Darker surface
+          light: '#3c4043',   // Lighter surface
         },
         accent: {
-          DEFAULT: '#F59E0B', // Amber-500
-          light: '#FCD34D', // Amber-300
-          dark: '#D97706', // Amber-600
+          DEFAULT: '#fdd663', // Google yellow
+          light: '#fee599',   // Light accent
+          dark: '#fcc934',    // Dark accent
         },
         error: {
-          DEFAULT: '#EF4444', // Red-500
-          light: '#FCA5A5', // Red-300
-          dark: '#DC2626', // Red-600
+          DEFAULT: '#f28b82', // Google red
+          light: '#f6aea9',   // Light error
+          dark: '#ee675c',    // Dark error
         },
         success: {
-          DEFAULT: '#10B981', // Emerald-500
-          light: '#6EE7B7', // Emerald-300
-          dark: '#059669', // Emerald-600
+          DEFAULT: '#81c995', // Google green
+          light: '#a8dab5',   // Light success
+          dark: '#5bb974',    // Dark success
         },
         warning: {
-          DEFAULT: '#F59E0B', // Amber-500
-          light: '#FCD34D', // Amber-300
-          dark: '#D97706', // Amber-600
+          DEFAULT: '#fdd663', // Google yellow
+          light: '#fee599',   // Light warning
+          dark: '#fcc934',    // Dark warning
         },
         info: {
-          DEFAULT: '#3B82F6', // Blue-500
-          light: '#93C5FD', // Blue-300
-          dark: '#2563EB', // Blue-600
+          DEFAULT: '#8ab4f8', // Google blue
+          light: '#aecbfa',   // Light info
+          dark: '#669df6',    // Dark info
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Roboto', 'Arial', 'system-ui', 'sans-serif'],
+        display: ['Google Sans', 'Product Sans', 'Roboto', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
@@ -64,10 +97,10 @@ export default {
         lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        card: '0 4px 15px rgba(0, 0, 0, 0.08)',
-        'card-hover': '0 6px 20px rgba(0, 0, 0, 0.12)',
-        inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
-        none: 'none',
+        'card': '0 2px 6px 2px rgba(0, 0, 0, 0.15)',
+        'card-hover': '0 4px 8px 3px rgba(0, 0, 0, 0.2)',
+        'inner': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+        'none': 'none',
       },
       borderRadius: {
         'sm': '0.125rem',
