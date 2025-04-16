@@ -18,7 +18,7 @@ const GlobalStyles = () => {
   useEffect(() => {
     // Add CSS variables to root - Google Dark Theme
     document.documentElement.style.setProperty('--color-primary', '138, 180, 248'); // Google blue #8ab4f8
-    document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24'); // Google dark background #181818 - updated
+    document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24'); // Google dark background #181818
     document.documentElement.style.setProperty('--color-bg-medium', '48, 49, 52'); // Google dark surface #303134
     document.documentElement.style.setProperty('--color-bg-light', '60, 64, 67'); // Slightly lighter surface #3c4043
     document.documentElement.style.setProperty('--color-accent', '253, 214, 99'); // Google yellow #fdd663
@@ -29,7 +29,7 @@ const GlobalStyles = () => {
     document.documentElement.style.setProperty('--transition-default', 'all 0.2s ease'); // transitions
 
     // Update body background to Google dark theme
-    document.body.style.backgroundColor = '#181818'; // Updated to #181818
+    document.body.style.backgroundColor = '#181818';
     document.body.style.color = '#e8eaed';
   }, []);
 
@@ -42,6 +42,11 @@ function App() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showTimeSeries, setShowTimeSeries] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  const toggleSidebar = (expanded) => {
+    setSidebarExpanded(expanded);
+  };
 
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
@@ -74,17 +79,14 @@ function App() {
   return (
     <MapProvider>
       <GlobalStyles />
-      <Layout 
-        showNotification={showNotification}
-        toggleTimeSeries={toggleTimeSeries}
-        toggleComparison={toggleComparison}
-      >
-        <AppMap />
+      <Layout sidebarExpanded={sidebarExpanded}>
         <Sidebar 
           showNotification={showNotification} 
           toggleTimeSeries={toggleTimeSeries}
           toggleComparison={toggleComparison}
+          onToggleSidebar={toggleSidebar}
         />
+        <AppMap />
         <RightSidebar showNotification={showNotification} />
         <PromptForm 
           showNotification={showNotification} 

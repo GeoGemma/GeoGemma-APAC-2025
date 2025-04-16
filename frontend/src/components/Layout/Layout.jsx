@@ -1,33 +1,21 @@
 // src/components/Layout/Layout.jsx
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { 
-  Settings,
-  HelpCircle,
-  Info,
-  Pencil
+  Settings, 
+  HelpCircle, 
+  Info
 } from 'lucide-react';
 import '../../styles/header.css';
 
-const Layout = ({ children }) => {
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  
-  // Listen for sidebar toggle event from Sidebar component
-  useEffect(() => {
-    const handleSidebarToggle = (event) => {
-      setSidebarExpanded(event.detail.expanded);
-    };
-    
-    window.addEventListener('sidebar-toggle', handleSidebarToggle);
-    return () => {
-      window.removeEventListener('sidebar-toggle', handleSidebarToggle);
-    };
-  }, []);
+const Layout = ({ children, sidebarExpanded }) => {
+  // Determine header class based on sidebar state
+  const headerClass = sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed';
 
   return (
     <div className="layout-container">
       {/* Top header - Google style */}
-      <div className={`top-header ${sidebarExpanded ? 'sidebar-expanded' : ''}`}>
+      <div className={`top-header ${headerClass}`}>
         <div className="top-header-logo">
           <div className="gegemma-logo">
             <img src="/geoshort.png" alt="GeoGemma Logo" className="logo-img" />
@@ -47,12 +35,7 @@ const Layout = ({ children }) => {
         </div>
       </div>
       
-      {/* Floating Edit Button (positioned in top-right) */}
-      <button className="floating-edit-button" title="Edit">
-        <Pencil size={20} />
-      </button>
-      
-      <main className={`layout-content ${sidebarExpanded ? 'sidebar-expanded' : ''}`}>
+      <main className={`layout-content ${headerClass}`}>
         {children}
       </main>
     </div>
@@ -61,6 +44,11 @@ const Layout = ({ children }) => {
 
 Layout.propTypes = {
   children: PropTypes.node.isRequired,
+  sidebarExpanded: PropTypes.bool
+};
+
+Layout.defaultProps = {
+  sidebarExpanded: false
 };
 
 export default Layout;

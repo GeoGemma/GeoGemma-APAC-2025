@@ -1,11 +1,21 @@
 // src/components/Sidebar/Sidebar.jsx
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { MessageSquare, Layers, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  MessageSquare, 
+  Layers, 
+  BookOpen, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock,
+  GitCompare,
+  Download
+} from 'lucide-react';
 import '../../styles/sidebar.css';
 
-const Sidebar = ({ showNotification }) => {
-  const [isOpen, setIsOpen] = useState(true);
+const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggleSidebar }) => {
+  const [isOpen, setIsOpen] = useState(false); // Default to collapsed
   const [messages, setMessages] = useState([]);
   const [activeSection, setActiveSection] = useState('chat');
   const messagesEndRef = useRef(null);
@@ -16,6 +26,13 @@ const Sidebar = ({ showNotification }) => {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Notify parent component about sidebar state changes
+  useEffect(() => {
+    if (onToggleSidebar) {
+      onToggleSidebar(isOpen);
+    }
+  }, [isOpen, onToggleSidebar]);
 
   // Listen for prompt submissions from the search bar
   useEffect(() => {
@@ -40,14 +57,6 @@ const Sidebar = ({ showNotification }) => {
       window.removeEventListener('prompt-submitted', handlePromptSubmit);
     };
   }, []);
-
-  // Notify layout component about sidebar state
-  useEffect(() => {
-    const event = new CustomEvent('sidebar-toggle', {
-      detail: { expanded: isOpen }
-    });
-    window.dispatchEvent(event);
-  }, [isOpen]);
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -74,15 +83,6 @@ const Sidebar = ({ showNotification }) => {
         /* Expanded Sidebar */
         <>
           <div className="sidebar-header">
-            <div className="logo">
-              <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 2L3 9L16 16L29 9L16 2Z" fill="#4285F4"/>
-                <path d="M3 16L16 23L29 16" stroke="#34A853" strokeWidth="3"/>
-                <path d="M3 23L16 30L29 23" stroke="#FBBC05" strokeWidth="3"/>
-              </svg>
-              <h1>GeoGemma</h1>
-            </div>
-            
             <div className="sidebar-slider" onClick={toggleSidebar} title="Collapse sidebar">
               <ChevronLeft size={20} />
             </div>
@@ -181,12 +181,38 @@ const Sidebar = ({ showNotification }) => {
               </div>
             )}
           </div>
+          
+          {/* Analysis tools section */}
+          <div className="sidebar-tools">
+            <button 
+              className="sidebar-tool" 
+              title="Time Series Analysis"
+              onClick={toggleTimeSeries}
+            >
+              <Clock size={20} />
+            </button>
+            <button 
+              className="sidebar-tool" 
+              title="Comparison Analysis"
+              onClick={toggleComparison}
+            >
+              <GitCompare size={20} />
+            </button>
+            <button 
+              className="sidebar-tool" 
+              title="Export Data"
+            >
+              <Download size={20} />
+            </button>
+          </div>
         </>
       ) : (
         /* Collapsed Sidebar */
         <>
-          <div className="sidebar-slider-collapsed" onClick={toggleSidebar} title="Expand sidebar">
-            <ChevronRight size={20} />
+          <div className="sidebar-collapsed-top">
+            <div className="sidebar-slider-collapsed" onClick={toggleSidebar} title="Expand sidebar">
+              <ChevronRight size={20} />
+            </div>
           </div>
           
           <div className="sidebar-icons">
@@ -213,15 +239,39 @@ const Sidebar = ({ showNotification }) => {
             >
               <BookOpen size={20} />
             </button>
+            
+            <button 
+              className="sidebar-icon new-chat-icon"
+              onClick={handleNewChat}
+              title="New chat"
+            >
+              <Plus size={20} />
+            </button>
           </div>
           
-          <button 
-            className="new-chat-button-collapsed"
-            onClick={handleNewChat}
-            title="New chat"
-          >
-            <Plus size={20} />
-          </button>
+          {/* Analysis tools for collapsed sidebar */}
+          <div className="sidebar-icons-bottom">
+            <button 
+              className="sidebar-icon" 
+              title="Time Series Analysis"
+              onClick={toggleTimeSeries}
+            >
+              <Clock size={20} />
+            </button>
+            <button 
+              className="sidebar-icon" 
+              title="Comparison Analysis"
+              onClick={toggleComparison}
+            >
+              <GitCompare size={20} />
+            </button>
+            <button 
+              className="sidebar-icon"
+              title="Export Data"
+            >
+              <Download size={20} />
+            </button>
+          </div>
         </>
       )}
     </div>
@@ -229,7 +279,16 @@ const Sidebar = ({ showNotification }) => {
 };
 
 Sidebar.propTypes = {
-  showNotification: PropTypes.func.isRequired
+  showNotification: PropTypes.func.isRequired,
+  toggleTimeSeries: PropTypes.func,
+  toggleComparison: PropTypes.func,
+  onToggleSidebar: PropTypes.func
+};
+
+Sidebar.defaultProps = {
+  toggleTimeSeries: () => {},
+  toggleComparison: () => {},
+  onToggleSidebar: () => {}
 };
 
 export default Sidebar;

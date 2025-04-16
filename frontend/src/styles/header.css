@@ -1,4 +1,4 @@
-/* Updated header.css - Removed left navigation */
+/* Updated header.css */
 .layout-container {
   display: flex;
   min-height: 100vh;
@@ -15,36 +15,29 @@
   height: 100vh;
   overflow: hidden;
   transition: all 0.3s ease;
-  margin-left: 60px; /* Space for collapsed sidebar */
-}
-
-.layout-content.sidebar-expanded {
-  margin-left: 260px; /* Space for expanded sidebar */
+  margin-left: 60px; /* Default space for collapsed sidebar */
 }
 
 .top-header {
   position: fixed;
   top: 0;
-  left: 0;
   right: 0;
   height: 56px;
   background-color: #181818;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px 0 76px; /* Adjust padding for collapsed sidebar */
+  padding: 0 16px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
   z-index: 990;
   transition: all 0.3s ease;
-}
-
-.top-header.sidebar-expanded {
-  padding-left: 276px; /* Adjust padding for expanded sidebar */
+  left: 60px; /* Match the collapsed sidebar width */
 }
 
 .top-header-logo {
   display: flex;
   align-items: center;
+  transition: transform 0.3s ease; /* Add transition for smooth movement */
 }
 
 .gegemma-logo {
@@ -90,31 +83,20 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Floating Edit button styling (positioned top-right) */
-.floating-edit-button {
-  position: fixed;
-  top: 70px;
-  right: 20px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #64ffda;
-  border: none;
-  cursor: pointer;
-  color: #181818;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+/* Responsive adjustments for sidebar states */
+.layout-content.sidebar-expanded {
+  margin-left: 260px; /* Space for expanded sidebar */
 }
 
-.floating-edit-button:hover {
-  background-color: #73ffdd;
-  transform: scale(1.05);
+.top-header.sidebar-expanded {
+  left: 260px; /* Match the expanded sidebar width */
 }
 
-.floating-edit-button:active {
-  transform: scale(0.95);
+/* Dynamic logo positioning based on sidebar state */
+.top-header.sidebar-expanded .top-header-logo {
+  transform: translateX(0); /* Reset position when sidebar is expanded */
+}
+
+.top-header.sidebar-collapsed .top-header-logo {
+  transform: translateX(0); /* Default position when sidebar is collapsed */
 }
