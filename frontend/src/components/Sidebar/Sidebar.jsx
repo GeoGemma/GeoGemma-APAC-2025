@@ -1,243 +1,235 @@
 // src/components/Sidebar/Sidebar.jsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Menu, X, Layers, Trash2, Download, LineChart, Split, History } from 'lucide-react';
-import { useMap } from '../../contexts/MapContext';
-import { clearLayers, getSavedLayers, getAnalyses } from '../../services/api';
+import { MessageSquare, Layers, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import '../../styles/sidebar.css';
 
-const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('layers');
-  const { layers, removeLayer, toggleLayerVisibility, setLayerOpacity } = useMap();
+const Sidebar = ({ showNotification }) => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [activeSection, setActiveSection] = useState('chat');
+  const messagesEndRef = useRef(null);
 
-  const handleClearLayers = async () => {
-    try {
-      await clearLayers();
-      showNotification('All layers cleared', 'success');
-    } catch (error) {
-      showNotification(`Error clearing layers: ${error.message}`, 'error');
+  // Scroll to bottom of chat when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, [messages]);
 
-  const handleLayerToggle = (layerId) => {
-    toggleLayerVisibility(layerId);
-  };
+  // Listen for prompt submissions from the search bar
+  useEffect(() => {
+    const handlePromptSubmit = (event) => {
+      const { prompt, response } = event.detail;
+      
+      // Add user message if prompt exists
+      if (prompt) {
+        addMessage(prompt, 'user');
+      }
+      
+      // Add system response if provided
+      if (response) {
+        setTimeout(() => {
+          addMessage(response, 'system');
+        }, 500); // Small delay to simulate response time
+      }
+    };
+    
+    window.addEventListener('prompt-submitted', handlePromptSubmit);
+    return () => {
+      window.removeEventListener('prompt-submitted', handlePromptSubmit);
+    };
+  }, []);
 
-  const handleLayerRemove = async (layerId) => {
-    try {
-      await removeLayer(layerId);
-      showNotification('Layer removed', 'success');
-    } catch (error) {
-      showNotification(`Error removing layer: ${error.message}`, 'error');
-    }
-  };
+  // Notify layout component about sidebar state
+  useEffect(() => {
+    const event = new CustomEvent('sidebar-toggle', {
+      detail: { expanded: isOpen }
+    });
+    window.dispatchEvent(event);
+  }, [isOpen]);
 
-  const handleOpacityChange = (layerId, opacity) => {
-    setLayerOpacity(layerId, opacity);
-  };
-
-  const handleToggleSidebar = () => {
+  const toggleSidebar = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleLoadSavedLayers = async () => {
-    try {
-      const response = await getSavedLayers();
-      if (response.success && response.data) {
-        if (response.data.length === 0) {
-          showNotification('No saved layers found', 'info');
-        } else {
-          showNotification(`Loaded ${response.data.length} saved layers`, 'success');
-          // In a real implementation, we would load these layers onto the map
-        }
-      } else {
-        showNotification('Failed to load saved layers', 'error');
-      }
-    } catch (error) {
-      showNotification(`Error loading saved layers: ${error.message}`, 'error');
-    }
+  const addMessage = (text, sender) => {
+    const newMsg = {
+      id: Date.now(),
+      text,
+      sender,
+      timestamp: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, newMsg]);
   };
 
-  const handleViewHistory = async () => {
-    try {
-      const response = await getAnalyses();
-      if (response.success && response.data) {
-        if (response.data.length === 0) {
-          showNotification('No analysis history found', 'info');
-        } else {
-          showNotification(`Found ${response.data.length} past analyses`, 'success');
-          // In a real implementation, we would display these analyses
-        }
-      } else {
-        showNotification('Failed to load analysis history', 'error');
-      }
-    } catch (error) {
-      showNotification(`Error loading history: ${error.message}`, 'error');
-    }
-  };
-
-  const handleTimeSeriesClick = () => {
-    toggleTimeSeries();
-  };
-
-  const handleComparisonClick = () => {
-    toggleComparison();
+  const handleNewChat = () => {
+    setMessages([]);
   };
 
   return (
-    <>
-      <button 
-        className="sidebar-toggle"
-        onClick={handleToggleSidebar}
-        aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
-      >
-        {isOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
-      <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <h2>Geo Gemma</h2>
-        </div>
-
-        <div className="sidebar-tabs">
-          <button 
-            className={`sidebar-tab ${activeTab === 'layers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('layers')}
-          >
-            <Layers size={16} /> Layers
+    <div className={`sidebar ${isOpen ? 'expanded' : 'collapsed'}`}>
+      {isOpen ? (
+        /* Expanded Sidebar */
+        <>
+          <div className="sidebar-header">
+            <div className="logo">
+              <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 2L3 9L16 16L29 9L16 2Z" fill="#4285F4"/>
+                <path d="M3 16L16 23L29 16" stroke="#34A853" strokeWidth="3"/>
+                <path d="M3 23L16 30L29 23" stroke="#FBBC05" strokeWidth="3"/>
+              </svg>
+              <h1>GeoGemma</h1>
+            </div>
+            
+            <div className="sidebar-slider" onClick={toggleSidebar} title="Collapse sidebar">
+              <ChevronLeft size={20} />
+            </div>
+          </div>
+          
+          <div className="sidebar-tabs">
+            <button 
+              className={`sidebar-tab ${activeSection === 'chat' ? 'active' : ''}`} 
+              onClick={() => setActiveSection('chat')}
+            >
+              <MessageSquare size={16} />
+              <span>Chat</span>
+            </button>
+            
+            <button 
+              className={`sidebar-tab ${activeSection === 'layers' ? 'active' : ''}`}
+              onClick={() => setActiveSection('layers')}
+            >
+              <Layers size={16} />
+              <span>Layers</span>
+            </button>
+            
+            <button 
+              className={`sidebar-tab ${activeSection === 'library' ? 'active' : ''}`}
+              onClick={() => setActiveSection('library')}
+            >
+              <BookOpen size={16} />
+              <span>Library</span>
+            </button>
+          </div>
+          
+          <button className="new-chat-button" onClick={handleNewChat}>
+            <Plus size={16} />
+            <span>New chat</span>
           </button>
-          <button 
-            className={`sidebar-tab ${activeTab === 'tools' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tools')}
-          >
-            Tools
-          </button>
-          <button 
-            className={`sidebar-tab ${activeTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveTab('history')}
-          >
-            <History size={16} /> History
-          </button>
-        </div>
-
-        <div className="sidebar-content">
-          {activeTab === 'layers' && (
-            <div className="layers-panel">
-              <div className="layers-header">
-                <h3>Map Layers</h3>
-                <button 
-                  className="action-button"
-                  onClick={handleClearLayers}
-                  title="Clear all layers"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-
-              {layers.length === 0 ? (
-                <p className="empty-message">No layers added yet. Use the search bar to add layers.</p>
-              ) : (
-                <ul className="layers-list">
-                  {layers.map((layer) => (
-                    <li key={layer.id} className="layer-item">
-                      <div className="layer-header">
-                        <label className="layer-toggle">
-                          <input 
-                            type="checkbox"
-                            checked={layer.visibility !== 'none'}
-                            onChange={() => handleLayerToggle(layer.id)}
-                          />
-                          <span className="layer-name">{layer.location}</span>
-                        </label>
-                        <button 
-                          className="layer-remove"
-                          onClick={() => handleLayerRemove(layer.id)}
-                          title="Remove layer"
+          
+          <div className="sidebar-content">
+            {activeSection === 'chat' && (
+              <>
+                <div className="chat-section">
+                  <h3>RECENT</h3>
+                  <div className="chat-history">
+                    <div className="chat-item active">
+                      <MessageSquare size={14} />
+                      <span>Earth imagery discussion</span>
+                    </div>
+                    <div className="chat-item">
+                      <MessageSquare size={14} />
+                      <span>Climate analysis</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="chat-messages">
+                  {messages.length === 0 ? (
+                    <div className="empty-chat">
+                      <MessageSquare size={32} className="empty-icon" />
+                      <h4>No messages yet</h4>
+                      <p>Use the search bar below to explore Earth imagery</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map(message => (
+                        <div 
+                          key={message.id} 
+                          className={`chat-message ${message.sender === 'user' ? 'chat-message-user' : 'chat-message-system'}`}
                         >
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <div className="layer-details">
-                        <span className="layer-type">{layer.processing_type}</span>
-                        <div className="layer-opacity">
-                          <span>Opacity:</span>
-                          <input 
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={layer.opacity || 0.8}
-                            onChange={(e) => handleOpacityChange(layer.id, parseFloat(e.target.value))}
-                          />
+                          <div className="message-avatar">
+                            {message.sender === 'user' ? 'You' : 'GG'}
+                          </div>
+                          <div className="message-content">
+                            <p>{message.text}</p>
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'tools' && (
-            <div className="tools-panel">
-              <h3>Analysis Tools</h3>
-              <div className="tools-grid">
-                <button
-                  className="tool-button"
-                  onClick={handleTimeSeriesClick}
-                  title="Time Series Analysis"
-                >
-                  <LineChart size={24} />
-                  <span>Time Series</span>
-                </button>
-                <button
-                  className="tool-button"
-                  onClick={handleComparisonClick}
-                  title="Comparison Analysis"
-                >
-                  <Split size={24} />
-                  <span>Compare</span>
-                </button>
-                <button
-                  className="tool-button"
-                  onClick={() => showNotification('Export feature coming soon', 'info')}
-                  title="Export Data"
-                >
-                  <Download size={24} />
-                  <span>Export</span>
-                </button>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+            
+            {activeSection === 'layers' && (
+              <div className="empty-section">
+                <Layers size={32} className="empty-icon" />
+                <h4>No layers added yet</h4>
+                <p>Search for Earth imagery to add layers</p>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="history-panel">
-              <h3>Analysis History</h3>
-              <button
-                className="history-button"
-                onClick={handleViewHistory}
-              >
-                <History size={16} /> View Past Analyses
-              </button>
-              <button
-                className="history-button"
-                onClick={handleLoadSavedLayers}
-              >
-                <Layers size={16} /> Load Saved Layers
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+            )}
+            
+            {activeSection === 'library' && (
+              <div className="empty-section">
+                <BookOpen size={32} className="empty-icon" />
+                <h4>Your library is empty</h4>
+                <p>Saved items will appear here</p>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* Collapsed Sidebar */
+        <>
+          <div className="sidebar-slider-collapsed" onClick={toggleSidebar} title="Expand sidebar">
+            <ChevronRight size={20} />
+          </div>
+          
+          <div className="sidebar-icons">
+            <button 
+              className={`sidebar-icon ${activeSection === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveSection('chat')}
+              title="Chat"
+            >
+              <MessageSquare size={20} />
+            </button>
+            
+            <button 
+              className={`sidebar-icon ${activeSection === 'layers' ? 'active' : ''}`}
+              onClick={() => setActiveSection('layers')}
+              title="Layers"
+            >
+              <Layers size={20} />
+            </button>
+            
+            <button 
+              className={`sidebar-icon ${activeSection === 'library' ? 'active' : ''}`}
+              onClick={() => setActiveSection('library')}
+              title="Library"
+            >
+              <BookOpen size={20} />
+            </button>
+          </div>
+          
+          <button 
+            className="new-chat-button-collapsed"
+            onClick={handleNewChat}
+            title="New chat"
+          >
+            <Plus size={20} />
+          </button>
+        </>
+      )}
+    </div>
   );
 };
 
 Sidebar.propTypes = {
-  showNotification: PropTypes.func.isRequired,
-  toggleTimeSeries: PropTypes.func.isRequired,
-  toggleComparison: PropTypes.func.isRequired
+  showNotification: PropTypes.func.isRequired
 };
 
 export default Sidebar;

@@ -27,23 +27,25 @@
 
 .sidebar-toggle-btn {
   position: absolute;
-  top: 20px;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
+  top: 16px;
+  left: 16px;
+  width: 36px;
+  height: 36px;
   padding: 8px;
   display: flex;
   justify-content: center;
-  color: #8ab4f8;
+  align-items: center;
+  color: #9aa0a6;
   background: transparent;
   border: none;
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .sidebar-toggle-btn:hover {
-  color: #aecbfa;
-  transform: scale(1.1);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e8eaed;
 }
 
 .right-sidebar-content {

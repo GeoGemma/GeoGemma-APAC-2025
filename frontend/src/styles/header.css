@@ -1,51 +1,45 @@
-/* Updated header.css - Google style */
+/* Updated header.css - Removed left navigation */
 .layout-container {
   display: flex;
   min-height: 100vh;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  background-color: #181818; /* Updated to #181818 */
+  background-color: #181818;
   position: relative;
   overflow: hidden;
 }
 
 .layout-content {
   flex: 1;
-  margin-left: 64px; /* Make room for the side navigation */
   position: relative;
-  width: calc(100% - 64px);
+  width: 100%;
   height: 100vh;
   overflow: hidden;
+  transition: all 0.3s ease;
+  margin-left: 60px; /* Space for collapsed sidebar */
 }
 
-.app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 64px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
-  background: #181818; /* Updated to #181818 */
-  color: #e8eaed;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+.layout-content.sidebar-expanded {
+  margin-left: 260px; /* Space for expanded sidebar */
 }
 
 .top-header {
   position: fixed;
   top: 0;
-  left: 64px; /* Align with sidebar width */
+  left: 0;
   right: 0;
   height: 56px;
-  background-color: #181818; /* Updated to #181818 */
+  background-color: #181818;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 0 76px; /* Adjust padding for collapsed sidebar */
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
   z-index: 990;
+  transition: all 0.3s ease;
+}
+
+.top-header.sidebar-expanded {
+  padding-left: 276px; /* Adjust padding for expanded sidebar */
 }
 
 .top-header-logo {
@@ -53,9 +47,15 @@
   align-items: center;
 }
 
-.top-header-logo img {
+.gegemma-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-img {
   height: 24px;
-  margin-right: 8px;
+  width: auto;
 }
 
 .top-header-title {
@@ -63,6 +63,7 @@
   font-size: 20px;
   font-weight: 500;
   color: #e8eaed;
+  margin: 0;
 }
 
 .top-header-actions {
@@ -89,145 +90,31 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 32px;
-}
-
-.app-logo {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: #8ab4f8;
-  text-decoration: none;
-  font-family: 'Google Sans', 'Product Sans', 'Roboto', sans-serif;
-  letter-spacing: 0.5px;
-}
-
-.navbar {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  justify-content: flex-start;
-  align-items: center;
-  width: 100%;
-}
-
-.navbar-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.navbar-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 0;
-  width: 100%;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #9aa0a6;
-}
-
-.navbar-tab:hover {
-  background-color: rgba(138, 180, 248, 0.1);
-  color: #e8eaed;
-}
-
-.navbar-tab.active {
-  color: #8ab4f8;
-  position: relative;
-  background-color: rgba(138, 180, 248, 0.1);
-}
-
-.navbar-tab.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background-color: #8ab4f8;
-  border-radius: 0 2px 2px 0;
-}
-
-.right-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  margin-top: auto;
-  padding-bottom: 20px;
-}
-
-.nav-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  color: #9aa0a6;
-  border: none;
-  width: 40px;
-  height: 40px;
+/* Floating Edit button styling (positioned top-right) */
+.floating-edit-button {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #64ffda;
+  border: none;
   cursor: pointer;
+  color: #181818;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
 }
 
-.nav-button:hover {
-  background-color: rgba(138, 180, 248, 0.1);
-  color: #8ab4f8;
+.floating-edit-button:hover {
+  background-color: #73ffdd;
+  transform: scale(1.05);
 }
 
-.nav-button:active {
+.floating-edit-button:active {
   transform: scale(0.95);
-}
-
-/* Utility classes */
-.mr-2 {
-  margin-right: 8px;
-}
-
-/* Responsive styles */
-@media (max-width: 768px) {
-  .app-header {
-    width: 56px;
-  }
-  
-  .layout-content {
-    margin-left: 56px;
-    width: calc(100% - 56px);
-  }
-  
-  .top-header {
-    left: 56px;
-  }
-  
-  .navbar-tabs {
-    gap: 4px;
-  }
-  
-  .navbar-tab {
-    padding: 10px 0;
-  }
-  
-  .nav-button {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-@media (max-width: 576px) {
-  .navbar-tab span {
-    display: none;
-  }
-  
-  .top-header-title {
-    font-size: 16px;
-  }
 }

@@ -1,7 +1,7 @@
 // src/components/UI/PromptForm.jsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Search, Mic, X, Sparkles } from 'lucide-react';
+import { Search, Mic, X, Send } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import { geocodeLocation, analyzePrompt } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
@@ -10,46 +10,10 @@ import '../../styles/promptForm.css';
 const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [recentPrompts, setRecentPrompts] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const promptRef = useRef(null);
   const inputRef = useRef(null);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
   
-  // Example suggestions for different types of prompts
-  const suggestions = [
-    "Show NDVI for New York City in 2022",
-    "RGB imagery of Amazon rainforest",
-    "Surface water in Lake Victoria",
-    "Land use in Paris, France",
-    "Land surface temperature in Cairo for summer 2021",
-    "Building heights in Singapore"
-  ];
-
-  useEffect(() => {
-    // Load recent prompts from local storage
-    const savedPrompts = localStorage.getItem('recentPrompts');
-    if (savedPrompts) {
-      try {
-        setRecentPrompts(JSON.parse(savedPrompts).slice(0, 5));
-      } catch (e) {
-        console.error('Error parsing saved prompts:', e);
-      }
-    }
-    
-    // Add click outside handler for suggestions
-    const handleClickOutside = (event) => {
-      if (promptRef.current && !promptRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -58,15 +22,10 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       return;
     }
     
-    // Save to recent prompts
-    const updatedPrompts = [prompt, ...recentPrompts.filter(p => p !== prompt)].slice(0, 5);
-    setRecentPrompts(updatedPrompts);
-    localStorage.setItem('recentPrompts', JSON.stringify(updatedPrompts));
-    
     showLoading('Processing your request...');
     
     try {
-      // Emit event for chat history to capture the prompt
+      // Emit event for chat to capture the prompt
       const promptEvent = new CustomEvent('prompt-submitted', {
         detail: { prompt: prompt, response: null }
       });
@@ -75,7 +34,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       // Clear existing markers
       clearMarkers();
       
-      // Use the API service function instead of direct fetch
+      // Use the API service function
       const result = await analyzePrompt(prompt);
       
       console.log('API response:', result);
@@ -131,20 +90,22 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
             }
           }
           
-          responseText = `Added ${processing_type || 'imagery'} layer for ${location}`;
+          responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. You can see it on the map now.`;
           showNotification(`Added layer: ${location} (${processing_type || prompt})`, 'success');
         } else {
-          responseText = 'Error: No visualization could be generated for this request.';
-          showNotification('Error: No tile URL returned', 'error');
+          responseText = 'I couldn\'t generate a visualization for this request. Please try a different location or data type.';
+          showNotification('Error: No visualization data available', 'error');
         }
       } else {
-        responseText = result && result.message ? result.message : 'Error fetching image for this location';
+        responseText = result && result.message 
+          ? `I couldn't process that request: ${result.message}` 
+          : 'I couldn\'t find imagery for that location. Could you try a more specific request?';
         showNotification(responseText, 'error');
       }
       
-      // Emit event with the response
+      // Emit event with the response to update chat
       const responseEvent = new CustomEvent('prompt-submitted', {
-        detail: { prompt, response: responseText }
+        detail: { prompt: null, response: responseText }
       });
       window.dispatchEvent(responseEvent);
       
@@ -153,7 +114,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       
     } catch (error) {
       console.error('Error processing prompt:', error);
-      let errorMessage = 'Failed to process the prompt';
+      let errorMessage = 'There was a problem processing your request';
       
       if (error.response) {
         errorMessage += `: ${error.response.data?.message || error.response.statusText || 'Server error'}`;
@@ -163,30 +124,20 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
         errorMessage += `: ${error.message || 'Unknown error'}`;
       }
       
-      // Emit event with the error
+      // Emit event with the error to update chat
       const errorEvent = new CustomEvent('prompt-submitted', {
-        detail: { prompt, response: errorMessage }
+        detail: { prompt: null, response: errorMessage }
       });
       window.dispatchEvent(errorEvent);
       
       showNotification(errorMessage, 'error');
     } finally {
       hideLoading();
-      setShowSuggestions(false);
     }
   };
 
   const handleInputFocus = () => {
     setIsFocused(true);
-    setShowSuggestions(true);
-  };
-
-  const handlePromptSelect = (selectedPrompt) => {
-    setPrompt(selectedPrompt);
-    setShowSuggestions(false);
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
   };
 
   const handleClearPrompt = () => {
@@ -237,43 +188,9 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
           className="prompt-submit"
           title="Search"
         >
-          <Search size={16} />
+          <Send size={16} />
         </button>
       </form>
-
-      {showSuggestions && (
-        <div className="prompt-suggestions scale-in">
-          {recentPrompts.length > 0 && (
-            <div className="suggestion-section">
-              <div className="suggestion-header">Recent Searches</div>
-              {recentPrompts.map((recentPrompt, index) => (
-                <div 
-                  key={`recent-${index}`} 
-                  className="suggestion-item"
-                  onClick={() => handlePromptSelect(recentPrompt)}
-                >
-                  <Search size={14} className="suggestion-icon" />
-                  <span>{recentPrompt}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <div className="suggestion-section">
-            <div className="suggestion-header">Try These</div>
-            {suggestions.map((suggestion, index) => (
-              <div 
-                key={`suggestion-${index}`} 
-                className="suggestion-item"
-                onClick={() => handlePromptSelect(suggestion)}
-              >
-                <Sparkles size={14} className="suggestion-icon" />
-                <span>{suggestion}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
