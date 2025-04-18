@@ -61,47 +61,6 @@ export function MapProvider({ children }) {
     mapInitializedRef.current = true;
   };
 
-  // const addLayer = (layerData) => {
-  //   if (!map) return;
-    
-  //   const sourceId = `ee-source-${layerData.id}`;
-  //   const layerId = `ee-layer-${layerData.id}`;
-
-  //   // Remove existing layer/source if they exist
-  //   if (map.getLayer(layerId)) {
-  //     map.removeLayer(layerId);
-  //   }
-  //   if (map.getSource(sourceId)) {
-  //     map.removeSource(sourceId);
-  //   }
-
-  //   // Add the source and layer
-  //   map.addSource(sourceId, {
-  //     'type': 'raster',
-  //     'tiles': [layerData.tile_url],
-  //     'tileSize': 256
-  //   });
-
-  //   map.addLayer({
-  //     'id': layerId,
-  //     'type': 'raster',
-  //     'source': sourceId,
-  //     'paint': {
-  //       'raster-opacity': 0.8
-  //     },
-  //     'layout': {
-  //       'visibility': 'visible'
-  //     }
-  //   });
-
-  //   // Update state with new layer
-  //   setLayers(prev => {
-  //     // Remove any existing layer with same id
-  //     const filtered = prev.filter(layer => layer.id !== layerData.id);
-  //     return [...filtered, layerData];
-  //   });
-  // };
-
   const addLayer = (layerData) => {
     if (!map) {
       console.error("Map is not initialized yet");

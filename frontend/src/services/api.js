@@ -160,15 +160,6 @@ export const createComparisonAnalysis = async (data) => {
   }
 };
 
-export const saveCustomArea = async (data) => {
-  try {
-    const response = await api.post('/api/custom-area', data);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
 export const geocodeLocation = async (location) => {
   try {
     // Use a free geocoding service like Nominatim instead of Google Maps

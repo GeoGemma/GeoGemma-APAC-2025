@@ -1,4 +1,4 @@
-/* Updated RightSidebar.css - Google style */
+/* Updated RightSidebar.css - Google style with icons */
 .right-sidebar {
   position: fixed;
   right: 0;
@@ -6,7 +6,7 @@
   bottom: 0;
   z-index: 10;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: #181818; /* Updated to #181818 */
+  background-color: #181818;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
 }
 
@@ -15,43 +15,84 @@
 }
 
 .right-sidebar.collapsed {
-  width: 64px;
+  width: 48px; /* Width for icons column */
 }
 
-.right-sidebar-inner {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
+/* Toggle button container - next to the sidebar */
+.sidebar-toggle-container {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%) translateX(-100%);
+  z-index: 11;
 }
 
 .sidebar-toggle-btn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  width: 36px;
-  height: 36px;
-  padding: 8px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  color: #9aa0a6;
-  background: transparent;
+  justify-content: center;
+  width: 28px;
+  height: 56px;
+  background-color: #181818;
   border: none;
-  border-radius: 50%;
+  border-radius: 4px 0 0 4px; /* Rounded on the left side only */
+  color: #e8eaed;
   cursor: pointer;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
 }
 
 .sidebar-toggle-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #e8eaed;
+  background-color: #303134;
 }
 
 .right-sidebar-content {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Styling for collapsed sidebar with icons */
+.sidebar-collapsed-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   height: 100%;
+  width: 100%;
+  padding: 10px 0;
+}
+
+.sidebar-icon-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 60px; /* Add some space at the top */
+  gap: 16px;
+}
+
+.sidebar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  color: #e8eaed;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-icon-btn.active {
+  background-color: rgba(138, 180, 248, 0.1);
+  color: #8ab4f8;
 }
 
 .sidebar-header {
@@ -68,26 +109,6 @@
   font-size: 16px;
   margin: 0;
   font-family: 'Google Sans', 'Product Sans', 'Roboto', sans-serif;
-}
-
-.sidebar-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 50%;
-  background-color: transparent;
-  color: #9aa0a6;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 32px;
-  height: 32px;
-}
-
-.sidebar-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #e8eaed;
 }
 
 .sidebar-tabs {
@@ -130,7 +151,7 @@
 .sidebar-content-area {
   flex: 1;
   overflow-y: auto;
-  background-color: #181818; /* Updated to #181818 */
+  background-color: #181818;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
@@ -375,49 +396,4 @@
 .info-text {
   color: #e8eaed;
   font-size: 14px;
-}
-
-/* Side icon navigation (collapsed state) */
-.sidebar-icon-container {
-  margin-top: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
-  gap: 20px;
-}
-
-.sidebar-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: transparent;
-  color: #9aa0a6;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.sidebar-icon-btn:hover {
-  background-color: rgba(138, 180, 248, 0.1);
-  color: #8ab4f8;
-}
-
-.sidebar-icon-btn.active {
-  background-color: rgba(138, 180, 248, 0.1);
-  color: #8ab4f8;
-}
-
-.delete-icon {
-  margin-top: auto;
-  margin-bottom: 20px;
-  color: #9aa0a6;
-}
-
-.delete-icon:hover {
-  background-color: rgba(242, 139, 130, 0.1);
-  color: #f28b82;
 }

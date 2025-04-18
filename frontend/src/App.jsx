@@ -10,7 +10,6 @@ import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
 import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
-import DrawingTools from './components/Map/DrawingTools.jsx';
 import './styles/font.css';
 
 // Define custom CSS variables for the Google theme
@@ -93,7 +92,7 @@ function App() {
           showLoading={showLoading}
           hideLoading={hideLoading}
         />
-        <DrawingTools showNotification={showNotification} />
+        
         
         {showTimeSeries && (
           <TimeSeriesAnalysis 

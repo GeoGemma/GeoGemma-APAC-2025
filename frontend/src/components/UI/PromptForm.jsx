@@ -1,7 +1,7 @@
 // src/components/UI/PromptForm.jsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Search, Mic, X, Send } from 'lucide-react';
+import { Search, Mic, X, Send, Clock } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import { geocodeLocation, analyzePrompt } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
@@ -10,9 +10,48 @@ import '../../styles/promptForm.css';
 const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const promptRef = useRef(null);
   const inputRef = useRef(null);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
+  
+  // Create separate prompt categories to allow for better organization
+  const examplePromptCategories = [
+    {
+      name: "Popular",
+      prompts: [
+        "Show NDVI vegetation in Paris for 2023",
+        "Land surface temperature in Dubai during summer 2022", 
+        "Surface water change in Lake Mead since 2000"
+      ]
+    },
+    {
+      name: "You might like",
+      prompts: [
+        "Urban growth in Shanghai between 2015-2023",
+        "Detect burned areas in California after 2021 wildfires"
+      ]
+    }
+  ];
+  
+  // Recent search history (could be stored in local storage in a real app)
+  const recentSearches = [
+    "NDVI Bangalore 2023",
+    "Surface water in Venice"
+  ];
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (promptRef.current && !promptRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,11 +172,13 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       showNotification(errorMessage, 'error');
     } finally {
       hideLoading();
+      setShowSuggestions(false);
     }
   };
 
   const handleInputFocus = () => {
     setIsFocused(true);
+    setShowSuggestions(true);
   };
 
   const handleClearPrompt = () => {
@@ -145,6 +186,18 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setPrompt(suggestion);
+    setShowSuggestions(false);
+    // Auto-submit the form after selecting a suggestion
+    setTimeout(() => {
+      if (promptRef.current) {
+        const form = promptRef.current.querySelector('form');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    }, 100);
   };
 
   return (
@@ -164,7 +217,6 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onFocus={handleInputFocus}
-          onBlur={() => setIsFocused(false)}
         />
         {prompt && (
           <button 
@@ -191,6 +243,47 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
           <Send size={16} />
         </button>
       </form>
+
+      {/* Suggestions dropdown with better organization */}
+      {showSuggestions && (
+        <div className="prompt-suggestions scale-in">
+          {recentSearches.length > 0 && (
+            <div className="suggestion-section">
+              <div className="suggestion-header">RECENT SEARCHES</div>
+              <div className="grid-suggestions">
+                {recentSearches.map((item, index) => (
+                  <div
+                    key={`recent-${index}`}
+                    className="suggestion-item"
+                    onClick={() => handleSuggestionClick(item)}
+                  >
+                    <Clock size={16} className="suggestion-icon" />
+                    <span className="suggestion-text">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {examplePromptCategories.map((category, catIndex) => (
+            <div className="suggestion-section" key={`category-${catIndex}`}>
+              <div className="suggestion-header">{category.name.toUpperCase()}</div>
+              <div className="grid-suggestions">
+                {category.prompts.map((item, index) => (
+                  <div
+                    key={`example-${category.name}-${index}`}
+                    className="suggestion-item"
+                    onClick={() => handleSuggestionClick(item)}
+                  >
+                    <Search size={16} className="suggestion-icon" />
+                    <span className="suggestion-text">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
