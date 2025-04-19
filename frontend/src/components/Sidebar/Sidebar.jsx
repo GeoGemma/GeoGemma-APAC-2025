@@ -8,14 +8,22 @@ import {
   ChevronRight,
   Clock,
   GitCompare,
-  Download
+  Download,
+  Loader
 } from 'lucide-react';
+import { chatWithGemini } from '../../services/geminiService';
+import ChatInput from './ChatInput';
 import '../../styles/sidebar.css';
+import '../../styles/chat.css';
 
 const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggleSidebar }) => {
   const [isOpen, setIsOpen] = useState(false); // Default to collapsed
   const [messages, setMessages] = useState([]);
-  const [activeSection, setActiveSection] = useState('chat');
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatHistory, setChatHistory] = useState([
+    { id: 'earth-imagery', title: 'Earth imagery discussion', active: true },
+    { id: 'climate', title: 'Climate analysis', active: false },
+  ]);
   const messagesEndRef = useRef(null);
 
   // Scroll to bottom of chat when messages change
@@ -34,19 +42,35 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
 
   // Listen for prompt submissions from the search bar
   useEffect(() => {
-    const handlePromptSubmit = (event) => {
+    const handlePromptSubmit = async (event) => {
       const { prompt, response } = event.detail;
       
       // Add user message if prompt exists
       if (prompt) {
         addMessage(prompt, 'user');
+        
+        // Only process with Gemini if there's no predefined response
+        if (!response) {
+          setIsLoading(true);
+          try {
+            // Get response from Gemini
+            const geminiResponse = await chatWithGemini(prompt, messages);
+            addMessage(geminiResponse, 'system');
+          } catch (error) {
+            console.error("Error getting response from Gemini:", error);
+            showNotification("Failed to get a response. Please try again.", "error");
+            addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
+          } finally {
+            setIsLoading(false);
+          }
+        }
       }
       
-      // Add system response if provided
+      // Add system response if provided (from map processing)
       if (response) {
         setTimeout(() => {
           addMessage(response, 'system');
-        }, 500); // Small delay to simulate response time
+        }, 500);
       }
     };
     
@@ -54,7 +78,7 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
     return () => {
       window.removeEventListener('prompt-submitted', handlePromptSubmit);
     };
-  }, []);
+  }, [messages, showNotification]);
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -72,7 +96,73 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
   };
 
   const handleNewChat = () => {
+    // Create a new chat entry
+    const newChatId = `chat-${Date.now()}`;
+    const newChat = {
+      id: newChatId,
+      title: 'New conversation',
+      active: true
+    };
+    
+    // Set all other chats to inactive
+    const updatedHistory = chatHistory.map(chat => ({
+      ...chat,
+      active: false
+    }));
+    
+    // Add the new chat to history
+    setChatHistory([newChat, ...updatedHistory]);
+    
+    // Clear messages
     setMessages([]);
+    
+    // Add a welcome message
+    setTimeout(() => {
+      addMessage("Hello! I'm GeoGemma. How can I help you explore Earth observation data today?", "system");
+    }, 300);
+  };
+
+  const handleSendMessage = async (message) => {
+    // Add user message
+    addMessage(message, 'user');
+    
+    // Process with Gemini
+    setIsLoading(true);
+    try {
+      const response = await chatWithGemini(message, messages);
+      addMessage(response, 'system');
+    } catch (error) {
+      console.error("Error getting response from Gemini:", error);
+      showNotification("Failed to get a response. Please try again.", "error");
+      addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectChat = (id) => {
+    // Update the active state of chats
+    const updatedHistory = chatHistory.map(chat => ({
+      ...chat,
+      active: chat.id === id
+    }));
+    
+    setChatHistory(updatedHistory);
+    
+    // In a real app, you would load the messages for this chat from database
+    // For now, we'll just simulate it by clearing messages
+    setMessages([]);
+    
+    // Add a message for the selected chat
+    setTimeout(() => {
+      if (id === 'earth-imagery') {
+        addMessage("What would you like to know about Earth observation?", "system");
+      } else if (id === 'climate') {
+        addMessage("How can I help with your climate analysis today?", "system");
+      } else {
+        addMessage("Hello! How can I assist you with this conversation?", "system");
+      }
+    }, 300);
   };
 
   return (
@@ -86,8 +176,6 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
             </div>
           </div>
           
-          {/* Removed the sidebar-tabs section with Layers and Library options */}
-          
           <button 
             className="new-chat-button" 
             onClick={handleNewChat}
@@ -98,18 +186,19 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
           </button>
           
           <div className="sidebar-content">
-            {/* Only displaying chat content since other tabs are removed */}
             <div className="chat-section">
               <h3>RECENT</h3>
               <div className="chat-history">
-                <div className="chat-item active">
-                  <MessageSquare size={14} />
-                  <span>Earth imagery discussion</span>
-                </div>
-                <div className="chat-item">
-                  <MessageSquare size={14} />
-                  <span>Climate analysis</span>
-                </div>
+                {chatHistory.map((chat) => (
+                  <div 
+                    key={chat.id} 
+                    className={`chat-item ${chat.active ? 'active' : ''}`}
+                    onClick={() => selectChat(chat.id)}
+                  >
+                    <MessageSquare size={14} />
+                    <span>{chat.title}</span>
+                  </div>
+                ))}
               </div>
             </div>
             
@@ -118,7 +207,7 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
                 <div className="empty-chat">
                   <MessageSquare size={32} className="empty-icon" />
                   <h4>No messages yet</h4>
-                  <p>Use the search bar below to explore Earth imagery</p>
+                  <p>Start a conversation or use the search bar to explore Earth imagery</p>
                 </div>
               ) : (
                 <>
@@ -135,11 +224,29 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
                       </div>
                     </div>
                   ))}
+                  {isLoading && (
+                    <div className="chat-message chat-message-system">
+                      <div className="message-avatar">GG</div>
+                      <div className="message-content">
+                        <div className="typing-indicator">
+                          <span>Thinking</span>
+                          <div className="typing-dots">
+                            <span className="typing-dot"></span>
+                            <span className="typing-dot"></span>
+                            <span className="typing-dot"></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </>
               )}
             </div>
           </div>
+          
+          {/* Chat input component */}
+          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
           
           {/* Analysis tools section */}
           <div className="sidebar-tools">
@@ -175,7 +282,6 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
           </div>
           
           <div className="sidebar-icons">
-            {/* Showing only Chat icon */}
             <button 
               className="sidebar-icon active"
               title="Chat"
@@ -183,11 +289,12 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
               <MessageSquare size={20} />
             </button>
             
-            {/* Removed Layers and Library icons */}
-            
             <button 
               className="sidebar-icon new-chat-icon"
-              onClick={handleNewChat}
+              onClick={() => {
+                setIsOpen(true);
+                setTimeout(handleNewChat, 300);
+              }}
               title="New chat"
               style={{ color: '#3166C7' }}
             >

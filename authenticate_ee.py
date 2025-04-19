@@ -15,7 +15,7 @@ def initialize_ee():
     Returns a tuple (success, error_message).
     """
     # Hard-code the new project ID to ensure it's always used
-    project_id = "ee-khalilzaryani007"
+    project_id = "ee-gdgocist"
     
     try:
         logger.info(f"Starting Earth Engine authentication with project ID: {project_id}")

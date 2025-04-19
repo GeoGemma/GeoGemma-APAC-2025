@@ -11,6 +11,7 @@ import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
 import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
 import './styles/font.css';
+import './styles/chat.css';
 
 // Define custom CSS variables for the Google theme
 const GlobalStyles = () => {
