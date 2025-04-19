@@ -18,6 +18,11 @@ from dotenv import load_dotenv
 import google.auth.credentials
 import datetime
 from starlette.middleware.sessions import SessionMiddleware
+'''
+#new imports for memeory
+#from langchain.chains import ConversationChain
+#from langchain.memory import ConversationBufferMemory
+'''
 
 from authenticate_ee import initialize_ee
 from database import (
@@ -138,7 +143,7 @@ class ApiResponse(BaseModel):
 async def startup_event():
     """Initialize Earth Engine, LLM, and MongoDB on startup."""
     global EE_INITIALIZED, EE_INITIALIZATION_ERROR, LLM_INITIALIZED, LLM_INITIALIZATION_ERROR, llm, DB_INITIALIZED, DB_INITIALIZATION_ERROR
-    
+   # ,conversation, memory # Add conversation, memory 
     # Initialize Earth Engine
     if PROJECT_ID:
         try:
@@ -182,8 +187,23 @@ async def startup_event():
         DB_INITIALIZED = False
         DB_INITIALIZATION_ERROR = str(e)
         logging.error(f"MongoDB connection failed: {e}")
+'''
+    # Initialize Langchain memory and conversation chain (AFTER LLM):
+    try:
+        memory = ConversationBufferMemory()
+        conversation = ConversationChain(
+            llm=llm,
+          memory=memory,
+          verbose=False  # Set to True for debugging, False for production
+      )
+        CONVERSATION_INITIALIZED = True
+        logging.info("Conversation chain initialized successfully")
+    except Exception as e:
+        CONVERSATION_INITIALIZED = False
+        CONVERSATION_INITIALIZATION_ERROR = str(e)
+        logging.error(f"Conversation chain initialization failed: {e}")
 
-
+'''
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close MongoDB connection on shutdown."""
@@ -363,6 +383,136 @@ async def process_prompt(request: Request, prompt: str = Form(...)):
         "longitude": longitude
     })
 
+'''
+Adding memeory updated process prompt function 
+@app.post("/", response_class=HTMLResponse)
+async def process_prompt(request: Request, prompt: str = Form(...)):
+ """Process user prompt and generate map response."""
+ tile_url = location = error_message = satellite = start_date = end_date = processing_type = year = latitude = longitude = None
+ layers = request.session.get("layers", [])
+
+ if not prompt.strip():
+     error_message = "Please enter a valid prompt."
+     return templates.TemplateResponse("index.html", {
+         "request": request, 
+         "tile_url": tile_url, 
+         "location": location, 
+         "error_message": error_message, 
+         "prompt": prompt, 
+         "layers": json.dumps(layers), 
+         "latitude": latitude, 
+         "longitude": longitude
+     })
+
+ service_errors = await check_services()
+ if service_errors:
+     error_message = " ".join(service_errors)
+     return templates.TemplateResponse("index.html", {
+         "request": request, 
+         "tile_url": tile_url, 
+         "location": location, 
+         "error_message": error_message, 
+         "prompt": prompt, 
+         "layers": json.dumps(layers), 
+         "latitude": latitude, 
+         "longitude": longitude
+     })
+
+ try:
+     # Use the conversation chain for analysis
+     llm_response = await conversation.apredict(input=prompt)  # Modified line
+     
+     # Analyze the prompt using LLM
+     analysis_result = await analyze_prompt(llm_response) #Modified line to use llm_response from conversation
+     if analysis_result:
+         location, processing_type, satellite, start_date, end_date, year, latitude, longitude = (
+             analysis_result.location, analysis_result.processing_type, analysis_result.satellite,
+             analysis_result.start_date, analysis_result.end_date, analysis_result.year,
+             analysis_result.latitude, analysis_result.longitude
+         )
+         logging.info(f"Analysis: location={location}, type={processing_type}, sat={satellite}, dates={start_date}-{end_date}, year={year}, lat={latitude}, lon={longitude}")
+         
+         if not PROJECT_ID:
+             error_message = "EE_PROJECT_ID not set."
+             return templates.TemplateResponse("index.html", {
+                 "request": request, 
+                 "tile_url": tile_url, 
+                 "location": location, 
+                 "error_message": error_message, 
+                 "prompt": prompt, 
+                 "layers": json.dumps(layers), 
+                 "latitude": latitude, 
+                 "longitude": longitude
+             })
+
+         # Get the tile URL
+         tile_url = get_tile_url(
+             location, processing_type, PROJECT_ID, satellite, start_date, end_date, 
+             year, latitude, longitude, llm, LLM_INITIALIZED
+         )
+         
+         if tile_url is None:
+             error_message = f"Error fetching image for {location} ({processing_type})."
+         else:
+             # Add a new layer
+             layer_id = f"{location.replace(' ', '_')}_{processing_type}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+             new_layer = {
+                 'id': layer_id, 
+                 'tile_url': tile_url, 
+                 'location': location, 
+                 'processing_type': processing_type, 
+                 "latitude": latitude, 
+                 "longitude": longitude,
+                 "opacity": 0.8,
+                 "visibility": "visible"
+             }
+             layers.append(new_layer)
+             request.session["layers"] = layers
+             
+             # Save analysis result and layer to database
+             if DB_INITIALIZED:
+                 analysis_data = {
+                     "prompt": prompt,
+                     "location": location,
+                     "processing_type": processing_type,
+                     "satellite": satellite,
+                     "start_date": start_date,
+                     "end_date": end_date,
+                     "year": year,
+                     "latitude": latitude,
+                     "longitude": longitude,
+                     "tile_url": tile_url
+                 }
+                 analysis_id = await save_analysis_result(analysis_data)
+                 
+                 if analysis_id:
+                     layer_data = {
+                         "name": f"{location} {processing_type}",
+                         "location": location,
+                         "processing_type": processing_type,
+                         "tile_url": tile_url,
+                         "latitude": latitude,
+                         "longitude": longitude,
+                         "analysis_id": analysis_id
+                     }
+                     await save_layer(layer_data)
+     else:
+         error_message = "Failed to analyze prompt."
+ except Exception as e:
+     error_message = f"Error processing prompt: {e}"
+     logging.exception("Error processing prompt")
+
+ return templates.TemplateResponse("index.html", {
+     "request": request, 
+     "tile_url": tile_url, 
+     "location": location, 
+     "error_message": error_message, 
+     "prompt": prompt, 
+     "layers": json.dumps(layers), 
+     "latitude": latitude, 
+     "longitude": longitude
+ })
+'''
 
 @app.options("/api/analyze")
 async def options_analyze():
@@ -373,7 +523,46 @@ async def options_analyze():
         "Access-Control-Allow-Headers": "Content-Type",
     }
 
+'''
+@app.post("/api/analyze", response_model=ApiResponse)
+async def api_analyze_prompt(request: AnalysisRequest, background_tasks: BackgroundTasks):
+ """API endpoint to analyze prompt."""
+ if errors := await check_services():
+     return ApiResponse(success=False, message=" ".join(errors))
 
+ try:
+     llm_response = await conversation.apredict(input=request.prompt)
+
+     analysis_result = await analyze_prompt(llm_response)
+     if not analysis_result:
+         return ApiResponse(success=False, message="Failed to analyze prompt.")
+     
+     data = analysis_result.dict()
+     data["tile_url"] = get_tile_url(
+         data["location"], data["processing_type"], PROJECT_ID, 
+         data.get("satellite"), data.get("start_date"), data.get("end_date"), 
+         data.get("year"), data.get("latitude"), data.get("longitude"), 
+         llm, LLM_INITIALIZED
+     )
+     
+     if data["tile_url"] is None:
+         return ApiResponse(success=False, message="Error fetching image.")
+         
+     # Save analysis and layer to database if requested
+     if request.save_result and DB_INITIALIZED:
+         background_tasks.add_task(
+             save_analysis_and_layer,
+             request.prompt,
+             data,
+             request.user_id
+         )
+         
+     return ApiResponse(success=True, message="Analysis complete", data=data)
+ except Exception as e:
+     return ApiResponse(success=False, message=f"Error: {e}")
+
+
+'''
 @app.post("/api/analyze", response_model=ApiResponse)
 async def api_analyze_prompt(request: AnalysisRequest, background_tasks: BackgroundTasks):
     """API endpoint to analyze prompt."""

@@ -6,6 +6,7 @@ pydantic
 langchain-ollama
 starlette
 python-multipart
+langchain
 earthengine-api
 geopy
 google-auth
@@ -16,3 +17,5 @@ pymongo
 motor
 beanie
 fastapi-users[mongodb]
+
+
