@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import MeasureToolControl from '../Map/MeasureToolControl';
+import MapLegendInfo from '../Map/MapLegend'; // Import the new component
 import { clearLayers as clearLayersApi, deleteLayer as deleteLayerApi } from '../../services/api';
 import './RightSidebar.css';
 
@@ -242,14 +243,10 @@ const RightSidebar = ({ showNotification }) => {
               </div>
             )}
             
-            {/* Info Panel */}
+            {/* Info Panel - Now includes the MapLegendInfo component */}
             {activeSection === 'info' && (
               <div className="content-panel">
-                <div className="info-container">
-                  <p className="info-text">
-                    Click on the map to view feature information.
-                  </p>
-                </div>
+                <MapLegendInfo />
               </div>
             )}
           </div>
@@ -259,22 +256,16 @@ const RightSidebar = ({ showNotification }) => {
         <div className="sidebar-collapsed-content">
           <div className="sidebar-icon-group">
             <button 
-              className="sidebar-icon-btn"
-              onClick={() => {
-                setActiveSection('layers');
-                toggleSidebar();
-              }}
+              className={`sidebar-icon-btn ${activeSection === 'layers' ? 'active' : ''}`}
+              onClick={() => toggleSection('layers')}
               title="Layers"
             >
               <Layers size={20} />
             </button>
             
             <button 
-              className="sidebar-icon-btn"
-              onClick={() => {
-                setActiveSection('info');
-                toggleSidebar();
-              }}
+              className={`sidebar-icon-btn ${activeSection === 'info' ? 'active' : ''}`}
+              onClick={() => toggleSection('info')}
               title="Information"
             >
               <Info size={20} />

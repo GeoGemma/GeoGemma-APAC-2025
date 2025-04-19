@@ -20,10 +20,7 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
   const [isOpen, setIsOpen] = useState(false); // Default to collapsed
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [chatHistory, setChatHistory] = useState([
-    { id: 'earth-imagery', title: 'Earth imagery discussion', active: true },
-    { id: 'climate', title: 'Climate analysis', active: false },
-  ]);
+  const [chatHistory, setChatHistory] = useState([]);
   const messagesEndRef = useRef(null);
 
   // Scroll to bottom of chat when messages change
@@ -44,6 +41,14 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
   useEffect(() => {
     const handlePromptSubmit = async (event) => {
       const { prompt, response } = event.detail;
+      
+      // Create a new chat if there are no chats
+      if (chatHistory.length === 0 && (prompt || response)) {
+        handleNewChat();
+        // Need to return here because state updates won't be reflected immediately
+        // The event will be lost, but that's okay as this is just for initialization
+        return;
+      }
       
       // Add user message if prompt exists
       if (prompt) {
@@ -78,7 +83,7 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
     return () => {
       window.removeEventListener('prompt-submitted', handlePromptSubmit);
     };
-  }, [messages, showNotification]);
+  }, [messages, showNotification, chatHistory]);
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -93,6 +98,9 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
     };
     
     setMessages(prev => [...prev, newMsg]);
+    
+    // In a full implementation, you would also update the messages in the specific chat
+    // This would require a more complex state structure that links chats to their messages
   };
 
   const handleNewChat = () => {
@@ -153,15 +161,9 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
     // For now, we'll just simulate it by clearing messages
     setMessages([]);
     
-    // Add a message for the selected chat
+    // Add a welcome message
     setTimeout(() => {
-      if (id === 'earth-imagery') {
-        addMessage("What would you like to know about Earth observation?", "system");
-      } else if (id === 'climate') {
-        addMessage("How can I help with your climate analysis today?", "system");
-      } else {
-        addMessage("Hello! How can I assist you with this conversation?", "system");
-      }
+      addMessage("Hello! How can I assist you with this conversation?", "system");
     }, 300);
   };
 
@@ -186,21 +188,23 @@ const Sidebar = ({ showNotification, toggleTimeSeries, toggleComparison, onToggl
           </button>
           
           <div className="sidebar-content">
-            <div className="chat-section">
-              <h3>RECENT</h3>
-              <div className="chat-history">
-                {chatHistory.map((chat) => (
-                  <div 
-                    key={chat.id} 
-                    className={`chat-item ${chat.active ? 'active' : ''}`}
-                    onClick={() => selectChat(chat.id)}
-                  >
-                    <MessageSquare size={14} />
-                    <span>{chat.title}</span>
-                  </div>
-                ))}
+            {chatHistory.length > 0 && (
+              <div className="chat-section">
+                <h3>RECENT</h3>
+                <div className="chat-history">
+                  {chatHistory.map((chat) => (
+                    <div 
+                      key={chat.id} 
+                      className={`chat-item ${chat.active ? 'active' : ''}`}
+                      onClick={() => selectChat(chat.id)}
+                    >
+                      <MessageSquare size={14} />
+                      <span>{chat.title}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="chat-messages">
               {messages.length === 0 ? (

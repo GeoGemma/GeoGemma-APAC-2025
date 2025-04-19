@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx
+// src/contexts/MapContext.jsx - Enhanced to better support the dynamic legend
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 
@@ -127,10 +127,11 @@ export function MapProvider({ children }) {
       
       console.log(`Layer added successfully: ${layerId}`);
       
-      // Update state with new layer
+      // Update state with new layer - putting most recent layer at the top of the array
       setLayersFn(prev => {
         // Remove any existing layer with same id
         const filtered = prev.filter(layer => layer.id !== layerData.id);
+        // Add new layer at the end of the array (top of the stack)
         return [...filtered, layerData];
       });
     } catch (error) {

@@ -10,8 +10,10 @@ import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
 import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
+// The MapLegend import is removed as it's now integrated in the RightSidebar
 import './styles/font.css';
-import './styles/chat.css';
+// Keeping mapLegend.css for styling that might be used by MapLegendInfo
+import './styles/mapLegend.css';
 
 // Define custom CSS variables for the Google theme
 const GlobalStyles = () => {
@@ -94,6 +96,7 @@ function App() {
           hideLoading={hideLoading}
         />
         
+        {/* The standalone MapLegend component is removed, as it's now integrated into the RightSidebar */}
         
         {showTimeSeries && (
           <TimeSeriesAnalysis 
