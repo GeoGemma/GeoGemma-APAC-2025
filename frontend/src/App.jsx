@@ -14,6 +14,8 @@ import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
 import './styles/font.css';
 // Keeping mapLegend.css for styling that might be used by MapLegendInfo
 import './styles/mapLegend.css';
+// Add new metadata styling
+import './styles/metadata.css';
 
 // Define custom CSS variables for the Google theme
 const GlobalStyles = () => {

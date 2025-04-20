@@ -82,10 +82,18 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       let responseText = '';
       
       if (result && result.success && result.data) {
-        const { location, processing_type, tile_url, latitude, longitude } = result.data;
+        const { 
+          location, 
+          processing_type, 
+          tile_url, 
+          latitude, 
+          longitude,
+          metadata // Ensure we capture the metadata from the API response
+        } = result.data;
         
         if (tile_url) {
           console.log('Tile URL:', tile_url);
+          console.log('Metadata:', metadata);
           
           // Create a new layer ID
           const layerId = generateLayerId(location, processing_type || prompt);
@@ -99,7 +107,8 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
             latitude: latitude || null,
             longitude: longitude || null,
             opacity: 0.8,
-            visibility: 'visible'
+            visibility: 'visible',
+            metadata: metadata // Include metadata in the layer object
           };
           
           console.log("Adding new layer:", newLayer);
@@ -129,7 +138,33 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
             }
           }
           
-          responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. You can see it on the map now.`;
+          // Format a more descriptive response text that includes metadata highlights if available
+          if (metadata) {
+            responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. `;
+            
+            // Add metadata highlights
+            if (metadata.STATUS === 'Metadata Processed Successfully' || metadata.Status === 'Metadata Processed Successfully') {
+              // Include some key metadata in the response
+              if (metadata.IMAGE_DATE || metadata['IMAGE DATE']) {
+                responseText += `Image date: ${metadata.IMAGE_DATE || metadata['IMAGE DATE']}. `;
+              }
+              if (metadata.SOURCE_DATASET || metadata['SOURCE DATASET']) {
+                responseText += `Source: ${metadata.SOURCE_DATASET || metadata['SOURCE DATASET']}. `;
+              }
+              
+              // Add statistics if available
+              const statsKey = Object.keys(metadata).find(key => key.includes('STATS'));
+              if (statsKey && metadata[statsKey] && typeof metadata[statsKey] === 'object') {
+                const stats = metadata[statsKey];
+                if (stats.Mean) responseText += `Average value: ${stats.Mean}. `;
+              }
+            }
+            
+            responseText += "You can see it on the map now and check the Info panel for more details.";
+          } else {
+            responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. You can see it on the map now.`;
+          }
+          
           showNotification(`Added layer: ${location} (${processing_type || prompt})`, 'success');
         } else {
           responseText = 'I couldn\'t generate a visualization for this request. Please try a different location or data type.';

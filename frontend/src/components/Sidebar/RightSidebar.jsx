@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import MeasureToolControl from '../Map/MeasureToolControl';
-import MapLegendInfo from '../Map/MapLegend'; // Import the new component
+import MapLegend from '../Map/MapLegend'; // Import the enhanced MapLegend component
 import { clearLayers as clearLayersApi, deleteLayer as deleteLayerApi } from '../../services/api';
 import './RightSidebar.css';
 
@@ -128,7 +128,7 @@ const RightSidebar = ({ showNotification }) => {
         <div className="right-sidebar-content">
           {/* Sidebar Header */}
           <div className="sidebar-header">
-            <h2 className="sidebar-title">Layers</h2>
+            <h2 className="sidebar-title">Map Controls</h2>
           </div>
 
           {/* Tool Tabs */}
@@ -243,10 +243,10 @@ const RightSidebar = ({ showNotification }) => {
               </div>
             )}
             
-            {/* Info Panel - Now includes the MapLegendInfo component */}
+            {/* Info Panel with Enhanced MapLegend that includes metadata */}
             {activeSection === 'info' && (
               <div className="content-panel">
-                <MapLegendInfo />
+                <MapLegend />
               </div>
             )}
           </div>
