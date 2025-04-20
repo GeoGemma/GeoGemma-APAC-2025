@@ -3,6 +3,7 @@ uvicorn
 jinja2
 python-dotenv
 pydantic
+langchain-core
 langchain-ollama
 starlette
 python-multipart
@@ -17,5 +18,3 @@ pymongo
 motor
 beanie
 fastapi-users[mongodb]
-
-

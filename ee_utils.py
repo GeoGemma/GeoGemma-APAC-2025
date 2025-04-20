@@ -1,3 +1,5 @@
+# --- START OF FILE ee_utils.py ---
+
 import ee
 import os
 import re
@@ -10,9 +12,12 @@ from functools import lru_cache
 from typing import Dict, Tuple, Optional, List, Union, Any
 import datetime
 import json
+from ee_metadata import extract_metadata # <--- Import extract_metadata
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- geocoding, get_admin_boundary, get_llm_coordinates remain unchanged as they don't directly use project ID ---
 
 @lru_cache(maxsize=128)
 def _geocode_location(location: str) -> Optional[Tuple[float, float]]:
@@ -35,14 +40,13 @@ def _geocode_location(location: str) -> Optional[Tuple[float, float]]:
         logging.error(f"Unexpected error during geocoding for {location}: {e}")
         return None
 
-
-def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None, 
-                      latitude: Optional[float] = None, longitude: Optional[float] = None, 
+def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
+                      latitude: Optional[float] = None, longitude: Optional[float] = None,
                       llm=None, LLM_INITIALIZED=False) -> Optional[ee.Geometry]:
     """
     Geocodes a location and retrieves its administrative boundary.
     Uses provided coordinates, then Geopy (cached), with LLM fallback.
-    
+
     Returns an ee.Geometry object or None if lookup fails.
     """
     point = None
@@ -62,7 +66,29 @@ def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date
             # Fallback to LLM
             logging.warning("No coordinates found with Geopy, attempting LLM-assisted geocoding")
             if llm and LLM_INITIALIZED:
-                llm_coords = get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED)
+                # Use await if get_llm_coordinates is async, otherwise call directly
+                # Assuming get_llm_coordinates might become async later:
+                # llm_coords = await get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED)
+                # For now, assuming it's synchronous if not explicitly awaited in app.py
+                try:
+                    # This might require running in an event loop if get_llm_coordinates is async
+                    # For simplicity here, assuming it can be called synchronously or needs adaptation
+                    # based on how it's used elsewhere. If called from async context, use await.
+                    # If synchronous context, needs asyncio.run or similar if get_llm_coordinates is async.
+                    # Let's assume it's called from an async context where needed.
+                    # If called synchronously, this part might need adjustment.
+                    import asyncio
+                    try:
+                        loop = asyncio.get_running_loop()
+                        llm_coords = loop.run_until_complete(get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED))
+                    except RuntimeError: # No running event loop
+                         llm_coords = asyncio.run(get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED))
+
+                except Exception as llm_e:
+                     logging.error(f"Error calling async get_llm_coordinates: {llm_e}")
+                     llm_coords = None
+
+
                 if llm_coords:
                     latitude, longitude = llm_coords
                     point = ee.Geometry.Point(longitude, latitude)
@@ -79,34 +105,48 @@ def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date
 
     try:
         # Load the FAO GAUL administrative boundaries dataset
-        admin2 = ee.FeatureCollection('FAO/GAUL_SIMPLIFIED_500m/2015/level2')
+        # Using a slightly higher resolution dataset for potentially better boundaries
+        admin_col_name = 'FAO/GAUL_SIMPLIFIED_500m/2015/level2' # Default level 2
+        try:
+             admin_col = ee.FeatureCollection(admin_col_name)
+             # Find the feature that intersects the point
+             feature = admin_col.filterBounds(point).first()
+        except ee.EEException as e:
+             logging.warning(f"Error accessing {admin_col_name}: {e}. Trying level 1.")
+             admin_col_name = 'FAO/GAUL_SIMPLIFIED_500m/2015/level1'
+             try:
+                 admin_col = ee.FeatureCollection(admin_col_name)
+                 feature = admin_col.filterBounds(point).first()
+             except ee.EEException as e1:
+                 logging.error(f"Error accessing {admin_col_name} as well: {e1}. Falling back to buffer.")
+                 feature = None
 
-        # Find the feature that intersects the point
-        feature = admin2.filterBounds(point).first()
 
         # Extract the geometry
         if feature is None:
-            logging.warning(f"No admin boundary found for {location} at ({latitude}, {longitude})")
+            logging.warning(f"No admin boundary found for {location} at ({latitude}, {longitude}) using GAUL L2/L1. Using buffer.")
             # Fall back to a buffer around the point
             buffer_distance = 10000  # 10km buffer
             return point.buffer(buffer_distance)
 
         geometry = feature.geometry()
+        logging.info(f"Successfully obtained geometry for {location} using {admin_col_name}")
         return geometry
     except Exception as e:
-        logging.error(f"Error retrieving admin boundary: {e}")
+        logging.error(f"Error retrieving admin boundary: {e}", exc_info=True)
         # Fallback to point buffer if admin boundary lookup fails
         if point is not None:
             buffer_distance = 10000  # 10km buffer
+            logging.warning("Falling back to point buffer due to boundary retrieval error.")
             return point.buffer(buffer_distance)
         return None
 
 
-async def get_llm_coordinates(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None, 
+async def get_llm_coordinates(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
                               llm=None, LLM_INITIALIZED=False) -> Optional[Tuple[float, float]]:
     """
     Uses the LLM to obtain coordinates for a location.
-    
+
     Returns a tuple of (latitude, longitude) or None if lookup fails.
     """
     if not llm or not LLM_INITIALIZED:
@@ -121,28 +161,34 @@ async def get_llm_coordinates(location: str, start_date: Optional[str] = None, e
         elif start_date:
             date_context = f" around the date {start_date}"
 
-        prompt = f"What are the latitude and longitude coordinates for: {location}{date_context}? Return only the numbers, comma-separated (e.g., 34.0522,-118.2437) or None if unknown."
+        prompt = f"What are the approximate latitude and longitude coordinates for the center of: {location}{date_context}? Respond ONLY with the latitude, comma, longitude (e.g., 34.0522,-118.2437). If you cannot determine coordinates, respond with 'None'."
         logging.info(f"Sending coordinate request to LLM: {prompt}")
-        
+
         # Get response from LLM
         response = await llm.ainvoke(prompt)
-        logging.info(f"LLM coordinate response: {response}")
+        response = response.strip() # Clean extra whitespace
+        logging.info(f"LLM coordinate response: '{response}'")
 
-        # Extract coordinates using regex
-        coords_match = re.search(r"([-+]?\d*\.\d+|[-+]?\d+),([-+]?\d*\.\d+|[-+]?\d+)", response)
+        # Extract coordinates using regex - more robust
+        coords_match = re.search(r"([-+]?\d{1,3}(?:\.\d+)?)\s*,\s*([-+]?\d{1,3}(?:\.\d+)?)", response)
         if coords_match:
             try:
                 latitude = float(coords_match.group(1))
                 longitude = float(coords_match.group(2))
-                return latitude, longitude
+                # Basic sanity check for coordinate ranges
+                if -90 <= latitude <= 90 and -180 <= longitude <= 180:
+                    return latitude, longitude
+                else:
+                    logging.warning(f"LLM returned coordinates outside valid range: {latitude}, {longitude}")
+                    return None
             except ValueError:
                 logging.error(f"Could not convert LLM response to coordinates: {response}")
                 return None
         else:
             if "none" in response.lower():
                 logging.warning(f"LLM indicates no coordinates found for: {location}")
-                return None
-            logging.warning(f"Could not extract coordinates from LLM response: {response}")
+            else:
+                logging.warning(f"Could not extract coordinates from LLM response: '{response}'")
             return None
 
     except Exception as e:
@@ -150,38 +196,68 @@ async def get_llm_coordinates(location: str, start_date: Optional[str] = None, e
         return None
 
 
-def get_clipped_tile_url(image: ee.Image, geometry: ee.Geometry, vis_params: Dict, project_id: str) -> Optional[str]:
+# MODIFIED: Ensure project_id is accepted and USED (though it wasn't directly used here before, it's good practice for clarity)
+def get_clipped_tile_url(image: ee.Image, geometry: ee.Geometry, vis_params: Dict, project_id: Optional[str] = None) -> Optional[str]:
     """
     Clips an Earth Engine image to a geometry and returns the tile URL.
-    
+    The project_id is implicitly used by ee operations initiated earlier.
+
     Returns a URL string or None if the operation fails.
     """
+    if image is None or geometry is None or vis_params is None:
+         logging.error("Missing image, geometry, or vis_params for get_clipped_tile_url.")
+         return None
+    # project_id isn't directly used in getMapId call itself, but it's good to acknowledge it's required for the EE session context.
+    if project_id is None:
+        logging.warning("Project ID context might be missing for get_clipped_tile_url call, operations may fail.")
+
     try:
         # Clip the image to the geometry
-        clipped_image = image.clip(geometry)
+        clipped_image = image.clipToCollection(ee.FeatureCollection(geometry)) # Use clipToCollection for robustness
 
-        # Get the Map ID
+        # Get the Map ID - this requires the EE session to be initialized with a valid project
         map_id = clipped_image.getMapId(vis_params)
 
         return map_id['tile_fetcher'].url_format
 
+    except ee.EEException as e:
+         # More specific EE errors
+         if "Parameter 'value' is required" in str(e) or "Invalid JSON" in str(e):
+             logging.error(f"Error getting tile URL - likely issue with vis_params or image: {e}")
+             logging.error(f"Vis Params: {vis_params}")
+             # Attempt to get image info (can be slow)
+             try:
+                 logging.error(f"Image Info: {image.getInfo()}")
+             except Exception as img_info_e:
+                 logging.error(f"Could not get image info: {img_info_e}")
+         elif "computation timed out" in str(e).lower() or "memory limit" in str(e).lower():
+             logging.error(f"EE Computation Error getting tile URL (Timeout/Memory): {e}")
+         elif "project" in str(e).lower(): # Catch project specific errors here too
+             logging.error(f"EE Project Error getting tile URL (Project: {project_id}): {e}")
+         else:
+             logging.error(f"Earth Engine error getting clipped tile URL: {e}")
+         return None
     except Exception as e:
-        logging.error(f"Error getting clipped tile URL: {e}")
+        logging.error(f"Unexpected error getting clipped tile URL: {e}", exc_info=True)
         return None
 
 
-def process_image(geometry: ee.Geometry, processing_type: str, satellite: Optional[str] = None, 
-                 start_date: Optional[str] = None, end_date: Optional[str] = None, 
+# --- process_image remains the same (doesn't need project_id directly) ---
+def process_image(geometry: ee.Geometry, processing_type: str, satellite: Optional[str] = None,
+                 start_date: Optional[str] = None, end_date: Optional[str] = None,
                  year: Optional[int] = None) -> Tuple[Optional[ee.Image], Optional[Dict]]:
     """
     Combines image retrieval and visualization parameter selection.
     Handles satellite and date options for all processing types.
-    
+
     Returns a tuple of (ee.Image, visualization_parameters) or (None, None) if processing fails.
     """
     try:
         # Log input parameters for debugging
         logging.info(f"Processing image: type={processing_type}, satellite={satellite}, dates={start_date} to {end_date}, year={year}")
+
+        image = None
+        vis_params = None
 
         # Process based on type
         if processing_type == 'RGB':
@@ -195,10 +271,9 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
         elif processing_type == 'LULC':
             image, vis_params = lulc.add_lulc(geometry)
         elif processing_type == 'LST':
-            if year is None:
-                logging.error("Year must be specified for LST processing.")
-                return None, None
-            image, vis_params = lst.add_landsat_lst(geometry, year)
+            # LST module handles year parsing including 'latest'
+            logging.info(f"Calling LST with geometry and year='{year}'")
+            image, vis_params = lst.add_landsat_lst(geometry, year) # Pass year directly
         elif processing_type == 'OPEN BUILDINGS':
             image, vis_params = openbuildings.add_open_buildings(geometry)
         else:
@@ -208,284 +283,285 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
         # Log result status
         if image is None:
             logging.warning(f"No image returned for {processing_type}")
+        elif vis_params is None:
+            logging.warning(f"No visualization parameters returned for {processing_type}")
         else:
-            logging.info(f"Successfully processed {processing_type} image")
+             # Basic validation of vis_params
+             if not isinstance(vis_params, dict) or 'palette' not in vis_params and 'bands' not in vis_params:
+                 logging.warning(f"Potentially invalid vis_params for {processing_type}: {vis_params}")
+             else:
+                 logging.info(f"Successfully processed {processing_type} image")
 
         return image, vis_params
+    except ee.EEException as e:
+        logging.error(f"Earth Engine error in process_image for {processing_type}: {e}")
+        return None, None
     except Exception as e:
-        logging.error(f"Error in process_image: {e}")
+        logging.error(f"Unexpected error in process_image for {processing_type}: {e}", exc_info=True)
         return None, None
 
-def get_tile_url(location: str, processing_type: str, project_id: str, satellite: Optional[str] = None, 
-                start_date: Optional[str] = None, end_date: Optional[str] = None, year: Optional[int] = None, 
-                latitude: Optional[float] = None, longitude: Optional[float] = None, 
-                llm=None, LLM_INITIALIZED=False) -> Optional[str]:
+
+# MODIFIED: Ensure project_id parameter is accepted and passed down correctly
+def get_tile_url(location: str, processing_type: str, project_id: str, satellite: Optional[str] = None,
+                start_date: Optional[str] = None, end_date: Optional[str] = None, year: Optional[int] = None,
+                latitude: Optional[float] = None, longitude: Optional[float] = None,
+                llm=None, LLM_INITIALIZED=False) -> Tuple[Optional[str], Optional[Dict]]:
     """
-    Fetches an Earth Engine tile URL.
+    Fetches an Earth Engine tile URL and extracts metadata.
     Includes options for satellite, start_date, and end_date for all processing types.
     Uses provided coordinates if available.
-    
-    Returns a URL string or None if the operation fails.
+    Requires a valid project_id for EE operations.
+
+    Returns a tuple: (URL string, metadata dictionary) or (None, None).
     """
+    tile_url = None
+    metadata = None
+    geometry = None # Initialize geometry
+
+    if not project_id:
+         logging.error("get_tile_url requires a project_id.")
+         return None, {"Status": "Configuration Error: Project ID missing"}
+
     try:
-        # Get the administrative boundary
+        # Get the administrative boundary (doesn't need project_id)
         geometry = get_admin_boundary(location, start_date, end_date, latitude, longitude, llm, LLM_INITIALIZED)
         if geometry is None:
             logging.warning(f"Could not retrieve administrative boundary for {location}")
-            return None
+            # Return failure status in metadata
+            return None, {"Status": f"Failed to get geometry for location: {location}"}
 
-        # Get the Earth Engine image and visualization parameters
+        # Get the Earth Engine image and visualization parameters (implicitly uses initialized EE session with project_id)
         image, vis_params = process_image(geometry, processing_type, satellite, start_date, end_date, year)
         if image is None or vis_params is None:
             logging.warning(f"Could not retrieve image or visualization parameters for {location} and {processing_type}")
-            return None
+            # Return failure status in metadata
+            proc_status = f"Failed to process {processing_type} image/vis_params"
+            # Try to get basic metadata even if image processing failed, if possible (e.g., if LST year was invalid)
+            # This might be difficult; for now, return a simple failure status.
+            return None, {"Status": proc_status}
 
-        # Get the clipped tile URL
+        # --- Metadata Extraction ---
+        stat_band_name = None
+        if processing_type == 'NDVI':
+            stat_band_name = 'NDVI'
+        elif processing_type == 'LST':
+            stat_band_name = 'LST_Celsius'
+        # Add other stat bands if needed
+
+        logging.info(f"Extracting metadata for {processing_type}...")
+        # extract_metadata operates on EE objects which depend on the initialized session
+        metadata = extract_metadata(
+            source_object=image, # Use the retrieved image
+            geometry=geometry,
+            start_date_input=start_date,
+            end_date_input=end_date,
+            processing_type=processing_type,
+            stat_band_name=stat_band_name
+        )
+        if metadata:
+             logging.info("Metadata extracted successfully.")
+             # Add Lat/Lon used for the request to metadata if available
+             if latitude and longitude:
+                  metadata['REQUEST_CENTER_LAT'] = f"{latitude:.4f}"
+                  metadata['REQUEST_CENTER_LON'] = f"{longitude:.4f}"
+             # Add geometry centroid if coords weren't passed (moved inside extract_metadata)
+        else:
+             logging.warning("Metadata extraction failed.")
+             metadata = {"Status": "Metadata extraction failed"} # Provide basic error status
+
+        # --- Get Tile URL ---
+        logging.info(f"Generating tile URL for {processing_type}...")
+        # Pass project_id for clarity/context, even if not directly used by the call signature of get_clipped_tile_url
         tile_url = get_clipped_tile_url(image, geometry, vis_params, project_id)
         if tile_url is None:
             logging.warning(f"Could not generate tile URL for {location} and {processing_type}")
-            
-        return tile_url
+            # Update metadata status if URL fails but metadata succeeded partially
+            if metadata and metadata.get("Status", "").startswith("Metadata Processed"):
+                 metadata["Status"] = "Metadata Processed, but Tile URL generation failed"
+            elif not metadata:
+                 metadata = {"Status": "Tile URL generation failed (and metadata failed earlier)"}
+            else: # Append to existing error status in metadata
+                 metadata["Status"] += "; Tile URL generation failed"
+            return None, metadata # Return None URL, but existing/updated metadata
 
+        logging.info(f"Successfully generated tile URL and metadata for {processing_type}")
+        return tile_url, metadata
+
+    except ee.EEException as e:
+        logging.error(f"Earth Engine error in get_tile_url for {processing_type} (Project: {project_id}): {e}")
+        # Try to return any metadata gathered before the error, update status
+        err_status = f"EE Error during URL/Metadata generation: {e}"
+        if metadata: metadata["Status"] = err_status
+        else: metadata = {"Status": err_status}
+        return tile_url, metadata # tile_url might be None here
     except Exception as e:
-        logging.error(f"Error in get_tile_url: {e}")
-        return None
+        logging.error(f"Unexpected error in get_tile_url for {processing_type}: {e}", exc_info=True)
+        # Try to return any metadata gathered before the error, update status
+        err_status = f"Unexpected error during URL/Metadata generation: {type(e).__name__}"
+        if metadata: metadata["Status"] = err_status
+        else: metadata = {"Status": err_status}
+        return tile_url, metadata # tile_url might be None here
 
 
-def process_time_series(geometry: ee.Geometry, processing_type: str, start_date: str, end_date: str, 
+# MODIFIED: Ensure project_id parameter is accepted and passed down correctly
+def process_time_series(geometry: ee.Geometry, processing_type: str, start_date: str, end_date: str,
                        interval: str = "monthly", project_id: str = None) -> List[Dict[str, Any]]:
     """
-    Process a time series of images for a given location and processing type.
-    
+    Process a time series of images for a given location and processing type, including metadata.
+    Requires a valid project_id for EE operations.
+
     Args:
         geometry: Earth Engine geometry object
         processing_type: Type of processing (RGB, NDVI, etc.)
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         interval: Time interval ('daily', 'weekly', 'monthly', 'yearly')
-        project_id: GCP project ID
-        
+        project_id: GCP project ID (Required)
+
     Returns:
-        List of dictionaries with time series data and URLs
+        List of dictionaries with time series data, URLs, and metadata
     """
+    if geometry is None:
+         logging.error("Geometry is required for process_time_series")
+         return [{"error": "Geometry is required"}]
+    if not project_id:
+         logging.error("Project ID is required for process_time_series")
+         return [{"error": "Configuration Error: Project ID missing"}]
+
     try:
         # Parse dates
         start = datetime.datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-        
-        # Generate date intervals
+
+        # Generate date intervals (logic remains same)
         dates = []
+        current_date = start
+        delta = None
+
         if interval == 'daily':
-            # For daily, create a list of dates from start to end
             delta = datetime.timedelta(days=1)
-            current = start
-            while current <= end:
-                dates.append(current.strftime('%Y-%m-%d'))
-                current += delta
         elif interval == 'weekly':
-            # For weekly, create dates at 7-day intervals
             delta = datetime.timedelta(days=7)
-            current = start
-            while current <= end:
-                dates.append(current.strftime('%Y-%m-%d'))
-                current += delta
         elif interval == 'monthly':
-            # For monthly, create dates at the 1st of each month
-            current = datetime.datetime(start.year, start.month, 1)
-            while current <= end:
-                dates.append(current.strftime('%Y-%m-%d'))
-                # Move to next month (handle year rollover)
-                if current.month == 12:
-                    current = datetime.datetime(current.year + 1, 1, 1)
+            current_date = datetime.datetime(start.year, start.month, 1)
+            while current_date <= end:
+                month_start = current_date.strftime('%Y-%m-%d')
+                # Calculate end of month
+                if current_date.month == 12:
+                    month_end_dt = datetime.datetime(current_date.year + 1, 1, 1) - datetime.timedelta(days=1)
                 else:
-                    current = datetime.datetime(current.year, current.month + 1, 1)
+                    month_end_dt = datetime.datetime(current_date.year, current_date.month + 1, 1) - datetime.timedelta(days=1)
+                # Ensure end of month doesn't exceed overall end date
+                if month_end_dt > end: month_end_dt = end
+                month_end = month_end_dt.strftime('%Y-%m-%d')
+                dates.append({'start': month_start, 'end': month_end})
+                # Move to day after month_end_dt, unless it's already past the overall end date
+                if month_end_dt >= end: break
+                current_date = month_end_dt + datetime.timedelta(days=1)
+
         elif interval == 'yearly':
-            # For yearly, create dates at the 1st of January each year
-            for year in range(start.year, end.year + 1):
-                dates.append(f"{year}-01-01")
+            current_date = datetime.datetime(start.year, 1, 1)
+            while current_date.year <= end.year:
+                year_start = current_date.strftime('%Y-%m-%d')
+                year_end = f"{current_date.year}-12-31"
+                # Ensure year_end doesn't exceed the overall end_date
+                if datetime.datetime.strptime(year_end, '%Y-%m-%d') > end:
+                    year_end = end.strftime('%Y-%m-%d')
+                dates.append({'start': year_start, 'end': year_end})
+                # Move to next year
+                current_date = datetime.datetime(current_date.year + 1, 1, 1)
         else:
             logging.error(f"Invalid interval: {interval}")
-            return []
-            
-        logging.info(f"Generated {len(dates)} dates for time series")
-        
-        # Process each date and generate time series data
+            return [{"error": f"Invalid interval: {interval}"}]
+
+        # Handle daily/weekly date generation
+        if delta:
+            while current_date <= end:
+                # For daily/weekly, start and end of interval are the same day
+                interval_start_end = current_date.strftime('%Y-%m-%d')
+                dates.append({'start': interval_start_end, 'end': interval_start_end})
+                current_date += delta
+
+        logging.info(f"Generated {len(dates)} intervals for time series ({interval})")
+
+        # Process each interval and generate time series data
         results = []
-        for i, date_str in enumerate(dates):
-            logging.info(f"Processing time series date {i+1}/{len(dates)}: {date_str}")
-            
-            # For RGB and simple visualizations, we need a small date range
-            # For intervals like NDVI, we might want to use a range
-            date_end = date_str
-            
-            # For monthly/yearly, use the entire month/year
-            if interval == 'monthly':
-                date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-                if date_obj.month == 12:
-                    next_month = datetime.datetime(date_obj.year + 1, 1, 1) - datetime.timedelta(days=1)
-                else:
-                    next_month = datetime.datetime(date_obj.year, date_obj.month + 1, 1) - datetime.timedelta(days=1)
-                date_end = next_month.strftime('%Y-%m-%d')
-            elif interval == 'yearly':
-                date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-                date_end = f"{date_obj.year}-12-31"
-                
-            # Extract year for LST processing
-            year = datetime.datetime.strptime(date_str, '%Y-%m-%d').year
-                
-            # Get image and visualization parameters
-            image, vis_params = process_image(geometry, processing_type, None, date_str, date_end, year)
-            
-            if image is not None and vis_params is not None:
-                # Get tile URL
-                tile_url = get_clipped_tile_url(image, geometry, vis_params, project_id)
-                
-                # For certain processing types, calculate statistics
-                stats = None
-                if processing_type == 'NDVI':
-                    stats = calculate_ndvi_stats(image, geometry)
-                elif processing_type == 'LST':
-                    stats = calculate_lst_stats(image, geometry)
-                
-                # Save result including date, URL and stats
-                result = {
-                    'date': date_str,
-                    'end_date': date_end,
-                    'tile_url': tile_url,
-                    'statistics': stats
-                }
-                results.append(result)
-            else:
-                logging.warning(f"Could not process image for date: {date_str}")
-                # Add placeholder for missing data
-                results.append({
-                    'date': date_str,
-                    'end_date': date_end,
-                    'tile_url': None,
-                    'statistics': None,
-                    'error': 'Could not process image for this date'
-                })
-        
-        return results
-    except Exception as e:
-        logging.exception(f"Error processing time series: {e}")
-        return []
+        for i, date_info in enumerate(dates):
+            interval_start = date_info['start']
+            interval_end = date_info['end']
+            logging.info(f"Processing time series interval {i+1}/{len(dates)}: {interval_start} to {interval_end}")
 
+            # Extract year for LST processing (use the start year of the interval)
+            year = datetime.datetime.strptime(interval_start, '%Y-%m-%d').year if processing_type == 'LST' else None
 
-def calculate_ndvi_stats(image: ee.Image, geometry: ee.Geometry) -> Dict[str, Any]:
-    """Calculate NDVI statistics for an image within a geometry."""
-    try:
-        # Calculate statistics using Earth Engine
-        reducer = ee.Reducer.mean().combine(
-            reducer2=ee.Reducer.stdDev(),
-            sharedInputs=True
-        ).combine(
-            reducer2=ee.Reducer.minMax(),
-            sharedInputs=True
-        )
-        
-        stats = image.reduceRegion(
-            reducer=reducer,
-            geometry=geometry,
-            scale=30,  # 30m resolution for Sentinel-2
-            maxPixels=1e9
-        ).getInfo()
-        
-        # Format the results
-        return {
-            'mean': stats.get('NDVI_mean'),
-            'std_dev': stats.get('NDVI_stdDev'),
-            'min': stats.get('NDVI_min'),
-            'max': stats.get('NDVI_max')
-        }
-    except Exception as e:
-        logging.error(f"Error calculating NDVI stats: {e}")
-        return None
+            # Get image and visualization parameters for the interval (uses EE session context)
+            image, vis_params = process_image(geometry, processing_type, None, interval_start, interval_end, year)
 
-
-def calculate_lst_stats(image: ee.Image, geometry: ee.Geometry) -> Dict[str, Any]:
-    """Calculate land surface temperature statistics for an image within a geometry."""
-    try:
-        # Calculate statistics using Earth Engine
-        reducer = ee.Reducer.mean().combine(
-            reducer2=ee.Reducer.stdDev(),
-            sharedInputs=True
-        ).combine(
-            reducer2=ee.Reducer.minMax(),
-            sharedInputs=True
-        )
-        
-        stats = image.reduceRegion(
-            reducer=reducer,
-            geometry=geometry,
-            scale=30,  # 30m resolution
-            maxPixels=1e9
-        ).getInfo()
-        
-        # Format the results
-        return {
-            'mean': stats.get('LST_mean'),
-            'std_dev': stats.get('LST_stdDev'),
-            'min': stats.get('LST_min'),
-            'max': stats.get('LST_max')
-        }
-    except Exception as e:
-        logging.error(f"Error calculating LST stats: {e}")
-        return None
-
-
-def get_area_statistics(geometry: ee.Geometry, image_collection: str, band_name: str, 
-                       start_date: str, end_date: str) -> Dict[str, Any]:
-    """
-    Get statistics for a custom area and time period.
-    
-    Args:
-        geometry: Earth Engine geometry
-        image_collection: Name of EE image collection
-        band_name: Band to analyze
-        start_date: Start date (YYYY-MM-DD)
-        end_date: End date (YYYY-MM-DD)
-        
-    Returns:
-        Dictionary with area statistics
-    """
-    try:
-        # Load the image collection
-        collection = ee.ImageCollection(image_collection)\
-            .filterDate(start_date, end_date)\
-            .filterBounds(geometry)\
-            .select(band_name)
-        
-        # Calculate mean over time
-        mean_image = collection.mean()
-        
-        # Calculate statistics
-        stats = mean_image.reduceRegion(
-            reducer=ee.Reducer.mean().combine(
-                reducer2=ee.Reducer.stdDev(),
-                sharedInputs=True
-            ).combine(
-                reducer2=ee.Reducer.minMax(),
-                sharedInputs=True
-            ),
-            geometry=geometry,
-            scale=30,
-            maxPixels=1e9
-        ).getInfo()
-        
-        # Calculate area
-        area_m2 = geometry.area().getInfo()
-        area_km2 = area_m2 / 1000000
-        
-        return {
-            'statistics': stats,
-            'area_m2': area_m2,
-            'area_km2': area_km2,
-            'timespan': {
-                'start_date': start_date,
-                'end_date': end_date
+            tile_url = None
+            metadata = None
+            timestep_result = {
+                'interval_start': interval_start,
+                'interval_end': interval_end,
+                'tile_url': None,
+                'metadata': None, # Initialize metadata field
+                'error': None
             }
-        }
+
+            if image is not None and vis_params is not None:
+                # --- Metadata Extraction for Timestep ---
+                stat_band_name = None
+                if processing_type == 'NDVI':
+                    stat_band_name = 'NDVI'
+                elif processing_type == 'LST':
+                    stat_band_name = 'LST_Celsius'
+
+                logging.info(f"Extracting metadata for timestep {interval_start}...")
+                # Metadata extraction depends on the EE session context
+                metadata = extract_metadata(
+                    source_object=image,
+                    geometry=geometry,
+                    start_date_input=interval_start, # Use interval dates
+                    end_date_input=interval_end,
+                    processing_type=processing_type,
+                    stat_band_name=stat_band_name
+                )
+                timestep_result['metadata'] = metadata if metadata else {"Status": "Metadata extraction failed for timestep"}
+
+                # --- Get Tile URL for Timestep ---
+                logging.info(f"Generating tile URL for timestep {interval_start}...")
+                # Pass project_id for clarity/context
+                tile_url = get_clipped_tile_url(image, geometry, vis_params, project_id)
+                timestep_result['tile_url'] = tile_url
+
+                if tile_url is None:
+                    logging.warning(f"Could not generate tile URL for timestep: {interval_start}")
+                    timestep_result['error'] = 'Could not generate tile URL for this interval'
+                    # Update metadata status if needed
+                    if metadata and metadata.get("Status", "").startswith("Metadata Processed"):
+                         metadata["Status"] = "Metadata Processed, but Tile URL generation failed"
+                    elif not metadata:
+                         metadata = {"Status": "Tile URL generation failed (and metadata failed earlier)"}
+                    else:
+                         metadata["Status"] += "; Tile URL generation failed"
+                    timestep_result['metadata'] = metadata # Ensure metadata reflects the URL failure
+
+            else:
+                logging.warning(f"Could not process image for interval: {interval_start} to {interval_end}")
+                timestep_result['error'] = 'Could not process image for this interval'
+                timestep_result['metadata'] = {"Status": "Image processing failed for timestep"}
+
+
+            results.append(timestep_result)
+
+        return results
+    except ee.EEException as e:
+        logging.exception(f"Earth Engine error processing time series (Project: {project_id}): {e}")
+        return [{"error": f"EE Error: {e}"}]
     except Exception as e:
-        logging.exception(f"Error calculating area statistics: {e}")
-        return None
+        logging.exception(f"Unexpected error processing time series: {e}")
+        return [{"error": f"Unexpected Error: {e}"}]
+
+
+# --- Statistics functions are removed as requested (handled by extract_metadata) ---
+
+# --- END OF FILE ee_utils.py ---

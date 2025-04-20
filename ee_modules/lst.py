@@ -481,7 +481,7 @@ def add_landsat_lst(geometry, year=None):
             return image.addBands(lst)
 
         startYearDate = ee.Date.fromYMD(parsed_year, 1, 1)
-        endYearDate = ee.Date.fromYMD(parsed_year, 12, 31)
+        endYearDate = ee.Date.fromYMD(parsed_year, 5, 31)
 
         # Check for Landsat 9 (launched September 2021)
         if parsed_year >= 2021:
@@ -537,7 +537,7 @@ def add_landsat_lst(geometry, year=None):
         minMax = lstImage.reduceRegion(
             reducer=ee.Reducer.minMax(),
             geometry=geometry.buffer(50000),
-            scale=100,
+            scale=300,
             maxPixels=1e9
         )
 
