@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx - Enhanced to better support the dynamic legend
+// src/contexts/MapContext.jsx - Complete updated file with layer focus feature
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 
@@ -98,7 +98,6 @@ export function MapProvider({ children }) {
   };
   
   // Helper function to actually add the layer to the map
-  // Now accepts the map as a parameter
   const addLayerToMap = (mapInstance, layerData, sourceId, layerId, setLayersFn) => {
     try {
       console.log(`Adding source: ${sourceId} with URL: ${layerData.tile_url}`);
@@ -127,12 +126,12 @@ export function MapProvider({ children }) {
       
       console.log(`Layer added successfully: ${layerId}`);
       
-      // Update state with new layer - putting most recent layer at the top of the array
+      // Update state with new layer - putting most recent layer at the TOP of the array
       setLayersFn(prev => {
         // Remove any existing layer with same id
         const filtered = prev.filter(layer => layer.id !== layerData.id);
-        // Add new layer at the end of the array (top of the stack)
-        return [...filtered, layerData];
+        // Add new layer at the beginning of the array (top of the stack)
+        return [layerData, ...filtered];
       });
     } catch (error) {
       console.error(`Error adding layer ${layerId} to map:`, error);
@@ -211,6 +210,155 @@ export function MapProvider({ children }) {
       ));
     }
   };
+  
+  // Function to reorder layers
+  const reorderLayers = (newLayerOrder) => {
+    if (!map) return;
+    
+    // Update the state with the new layer order
+    setLayers(newLayerOrder);
+    
+    // Update the layer order in the map
+    // For maplibre/mapbox, higher z-index = higher visual layer
+    // Loop through layers in reverse order to set z-index correctly
+    newLayerOrder.forEach((layer, index) => {
+      const mapLayerId = `ee-layer-${layer.id}`;
+      if (map.getLayer(mapLayerId)) {
+        // Calculate z-index (higher value = rendered on top)
+        // Use reverse index so first item in array gets highest z-index
+        const zIndex = newLayerOrder.length - index;
+        
+        // In MapLibre, we can't directly set z-index
+        // We need to remove and re-add the layer to change the stacking order
+        try {
+          // Store the current layer properties
+          const sourceId = map.getLayer(mapLayerId).source;
+          const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
+          const opacity = map.getPaintProperty(mapLayerId, 'raster-opacity');
+          
+          // Remove the layer (but not its source)
+          map.removeLayer(mapLayerId);
+          
+          // Re-add the layer with the same properties
+          map.addLayer({
+            'id': mapLayerId,
+            'type': 'raster',
+            'source': sourceId,
+            'paint': {
+              'raster-opacity': opacity
+            },
+            'layout': {
+              'visibility': visibility
+            }
+          });
+        } catch (error) {
+          console.error(`Error reordering layer ${mapLayerId}:`, error);
+        }
+      }
+    });
+    
+    console.log("Layers reordered successfully");
+  };
+
+  // NEW FUNCTION: Focus on a specific layer's output area
+  const focusOnLayer = (layerId) => {
+    if (!map || !layerId) return;
+    
+    // Find the layer data
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) {
+      console.error(`Layer with ID ${layerId} not found`);
+      return;
+    }
+    
+    try {
+      // If the layer has a defined bounding box in its metadata, use that
+      if (layer.metadata && (
+          (layer.metadata.BOUNDING_BOX) || 
+          (layer.metadata.bounding_box) ||
+          (layer.metadata.GEOMETRY_BOUNDS) ||
+          (layer.metadata.geometry_bounds)
+        )) {
+        // Get bounds from metadata
+        const bounds = layer.metadata.BOUNDING_BOX || 
+                      layer.metadata.bounding_box || 
+                      layer.metadata.GEOMETRY_BOUNDS || 
+                      layer.metadata.geometry_bounds;
+        
+        if (bounds && Array.isArray(bounds) && bounds.length === 4) {
+          // Format: [west, south, east, north]
+          map.fitBounds([
+            [bounds[0], bounds[1]], // Southwest
+            [bounds[2], bounds[3]]  // Northeast
+          ], { 
+            padding: 50,
+            duration: 1000
+          });
+          return;
+        }
+      }
+      
+      // If no explicit bounds found, try to use the geometry centroid from metadata
+      if (layer.metadata && layer.metadata.GEOMETRY_CENTROID) {
+        const centroidStr = layer.metadata.GEOMETRY_CENTROID;
+        const match = centroidStr.match(/Lon: ([-\d.]+), Lat: ([-\d.]+)/);
+        
+        if (match && match.length === 3) {
+          const lon = parseFloat(match[1]);
+          const lat = parseFloat(match[2]);
+          
+          // Just center on the point, but with an appropriately zoomed view
+          map.flyTo({
+            center: [lon, lat],
+            zoom: 10,
+            duration: 1000
+          });
+          return;
+        }
+      }
+      
+      // Fallback to the layer's stored coordinates
+      if (layer.latitude !== undefined && layer.longitude !== undefined) {
+        // Calculate a reasonable bounding box around the point based on the processing type
+        // Different processing types might need different zoom levels
+        let zoomLevel = 10; // Default zoom level
+        
+        // Adjust zoom level based on layer type
+        switch(layer.processing_type) {
+          case 'RGB':
+            zoomLevel = 12; // Closer zoom for RGB imagery
+            break;
+          case 'NDVI':
+            zoomLevel = 11;
+            break;
+          case 'SURFACE WATER':
+            zoomLevel = 9; // Wider view for water features
+            break;
+          case 'LULC':
+            zoomLevel = 10;
+            break;
+          case 'LST':
+            zoomLevel = 9; // Land surface temperature tends to be viewed over larger areas
+            break;
+          case 'OPEN BUILDINGS':
+            zoomLevel = 14; // Closer zoom for building details
+            break;
+          default:
+            zoomLevel = 10;
+        }
+        
+        map.flyTo({
+          center: [layer.longitude, layer.latitude],
+          zoom: zoomLevel,
+          duration: 1500
+        });
+      } else {
+        console.warn(`Layer ${layerId} has no coordinate or boundary information`);
+      }
+    } catch (error) {
+      console.error(`Error focusing on layer ${layerId}:`, error);
+    }
+  };
 
   const addMarker = (lat, lon) => {
     if (!map) return;
@@ -261,6 +409,8 @@ export function MapProvider({ children }) {
     clearLayers,
     toggleLayerVisibility,
     setLayerOpacity,
+    reorderLayers,
+    focusOnLayer, // Added the new function
     addMarker,
     clearMarkers,
     flyToLocation,

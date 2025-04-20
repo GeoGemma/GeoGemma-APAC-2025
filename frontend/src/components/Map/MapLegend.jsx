@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useMap } from '../../contexts/MapContext';
 import { Info, ChevronDown, ChevronUp } from 'lucide-react';
-import MetadataViewer from './MetadataViewer';
 
 // Legend configurations for different layer types
 const legendConfigs = {
@@ -58,44 +57,51 @@ const legendConfigs = {
   }
 };
 
-const MapLegend = () => {
+const MapLegend = ({ selectedLayer }) => {
   const { layers } = useMap();
-  const [activeLegend, setActiveLegend] = useState(null);
+  const [activeLayer, setActiveLayer] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     legend: true,
     metadata: true
   });
 
-  // Determine which legend to show based on active layers
+  // Use the selected layer if provided, otherwise determine based on top visible layer
   useEffect(() => {
+    if (selectedLayer) {
+      setActiveLayer({
+        ...selectedLayer,
+        config: legendConfigs[selectedLayer.processing_type]
+      });
+      return;
+    }
+    
+    // If no selected layer, determine based on visible layers
     if (!layers || layers.length === 0) {
-      setActiveLegend(null);
+      setActiveLayer(null);
       return;
     }
 
     // Get the top-most visible layer
     const visibleLayers = layers.filter(layer => layer.visibility !== 'none');
     if (visibleLayers.length === 0) {
-      setActiveLegend(null);
+      setActiveLayer(null);
       return;
     }
 
     // Get the top layer (most recently added)
-    const topLayer = visibleLayers[visibleLayers.length - 1];
+    const topLayer = visibleLayers[0]; // First item since we've reversed the order
     const layerType = topLayer.processing_type;
     
-    // Set the active legend configuration
+    // Set the active layer configuration
     if (legendConfigs[layerType]) {
-      setActiveLegend({
-        ...legendConfigs[layerType],
-        layerType,
-        location: topLayer.location,
-        metadata: topLayer.metadata || null
+      setActiveLayer({
+        ...topLayer,
+        config: legendConfigs[layerType]
       });
     } else {
-      setActiveLegend(null);
+      setActiveLayer(null);
     }
-  }, [layers]);
+  }, [layers, selectedLayer]);
 
   // Toggle section expansion
   const toggleSection = (section) => {
@@ -112,64 +118,8 @@ const MapLegend = () => {
     return value;
   };
 
-  // Render metadata section
-  const renderMetadataSection = (metadata) => {
-    if (!metadata) return null;
-    
-    // Filter out technical or redundant fields
-    const excludedKeys = ['Status'];
-    const filteredMetadata = Object.entries(metadata).filter(([key]) => !excludedKeys.includes(key));
-    
-    // Sort important fields first
-    const priorityKeys = [
-      'PROCESSING TYPE', 'SOURCE DATASET', 'IMAGE DATE', 
-      'REQUESTED START', 'REQUESTED END', 'DATASET YEAR'
-    ];
-    
-    filteredMetadata.sort((a, b) => {
-      const indexA = priorityKeys.indexOf(a[0]);
-      const indexB = priorityKeys.indexOf(b[0]);
-      
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      return a[0].localeCompare(b[0]);
-    });
-    
-    return (
-      <div>
-        {filteredMetadata.map(([key, value]) => {
-          // Special handling for nested objects (like stats)
-          if (typeof value === 'object' && value !== null) {
-            return (
-              <div key={key} className="mb-3">
-                <h5 className="text-google-grey-200 text-xs font-medium mb-1">{key}</h5>
-                <div className="pl-2 border-l-2 border-google-bg-light">
-                  {Object.entries(value).map(([statKey, statValue]) => (
-                    <div key={statKey} className="flex justify-between text-xs mb-1">
-                      <span className="text-google-grey-300">{statKey}:</span>
-                      <span className="text-google-grey-100">{formatMetadataValue(statValue)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          }
-          
-          // Regular key-value display
-          return (
-            <div key={key} className="flex justify-between text-xs mb-2">
-              <span className="text-google-grey-300">{key}:</span>
-              <span className="text-google-grey-100 text-right max-w-[60%] break-words">{formatMetadataValue(value)}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   // Don't render anything if no layers or no matching legend
-  if (!activeLegend) {
+  if (!activeLayer) {
     return (
       <div className="flex flex-col items-center justify-center p-4 text-center text-google-grey-300 h-full">
         <Info size={24} className="mb-2 text-google-grey-300/50" />
@@ -183,8 +133,8 @@ const MapLegend = () => {
     <div className="p-4">
       {/* Layer info header */}
       <div className="mb-4">
-        <h3 className="text-google-blue text-lg font-medium mb-1">{activeLegend.title}</h3>
-        <p className="text-google-grey-100 text-sm">{activeLegend.location}</p>
+        <h3 className="text-google-blue text-lg font-medium mb-1">{activeLayer.config?.title || activeLayer.processing_type}</h3>
+        <p className="text-google-grey-100 text-sm">{activeLayer.location}</p>
       </div>
 
       {/* Legend visualization section with toggle */}
@@ -200,24 +150,24 @@ const MapLegend = () => {
         {expandedSections.legend && (
           <div className="mt-3">
             {/* Gradient bar for continuous data */}
-            {activeLegend.gradient && (
+            {activeLayer.config?.gradient && (
               <div className="mb-3">
                 <div 
                   className="h-4 w-full rounded"
-                  style={{ background: activeLegend.gradient }}
+                  style={{ background: activeLayer.config.gradient }}
                 ></div>
                 <div className="flex justify-between mt-1 text-xs text-google-grey-300">
-                  <span>{activeLegend.min}</span>
-                  {activeLegend.middle && <span>{activeLegend.middle}</span>}
-                  <span>{activeLegend.max}</span>
+                  <span>{activeLayer.config.min}</span>
+                  {activeLayer.config.middle && <span>{activeLayer.config.middle}</span>}
+                  <span>{activeLayer.config.max}</span>
                 </div>
               </div>
             )}
 
             {/* Categories for discrete data */}
-            {activeLegend.categories && (
+            {activeLayer.config?.categories && (
               <div className="grid grid-cols-1 gap-2">
-                {activeLegend.categories.map((cat, idx) => (
+                {activeLayer.config.categories.map((cat, idx) => (
                   <div 
                     key={idx} 
                     className="flex items-center gap-2"
@@ -236,32 +186,66 @@ const MapLegend = () => {
       </div>
 
       {/* Metadata section with toggle */}
-      <div className="bg-google-bg-light rounded-lg p-3 mb-4">
-        <div 
-          className="flex justify-between items-center cursor-pointer" 
-          onClick={() => toggleSection('metadata')}
-        >
-          <h4 className="text-google-grey-200 text-sm font-medium">Metadata</h4>
-          {expandedSections.metadata ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </div>
-        
-        {expandedSections.metadata && (
-          <div className="mt-3">
-            {/* Use the MetadataViewer component for better organization */}
-            <MetadataViewer metadata={activeLegend.metadata} />
+      {activeLayer.metadata && (
+        <div className="bg-google-bg-light rounded-lg p-3 mb-4">
+          <div 
+            className="flex justify-between items-center cursor-pointer" 
+            onClick={() => toggleSection('metadata')}
+          >
+            <h4 className="text-google-grey-200 text-sm font-medium">Metadata</h4>
+            {expandedSections.metadata ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
-        )}
-      </div>
+          
+          {expandedSections.metadata && (
+            <div className="mt-3">
+              {Object.entries(activeLayer.metadata)
+                .filter(([key]) => key !== 'Status') // Exclude status field
+                .map(([key, value]) => {
+                  // Handle nested objects like stats
+                  if (typeof value === 'object' && value !== null) {
+                    return (
+                      <div key={key} className="mb-3">
+                        <h5 className="text-google-grey-200 text-xs font-medium mb-1">{key}</h5>
+                        <div className="pl-2 border-l-2 border-google-bg-lighter">
+                          {Object.entries(value).map(([statKey, statValue]) => (
+                            <div key={statKey} className="flex justify-between text-xs mb-1">
+                              <span className="text-google-grey-300">{statKey}:</span>
+                              <span className="text-google-grey-100">{formatMetadataValue(statValue)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Regular key-value display
+                  return (
+                    <div key={key} className="flex justify-between text-xs mb-2">
+                      <span className="text-google-grey-300">{key}:</span>
+                      <span className="text-google-grey-100 text-right max-w-[60%] break-words">
+                        {formatMetadataValue(value)}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Description section */}
       <div className="bg-google-bg-light rounded-lg p-3">
         <h4 className="text-google-grey-200 text-sm font-medium mb-2">About this layer</h4>
         <p className="text-xs text-google-grey-300 leading-normal">
-          {activeLegend.description}
+          {activeLayer.config?.description || `This layer shows ${activeLayer.processing_type} data for ${activeLayer.location}.`}
         </p>
       </div>
     </div>
   );
+};
+
+MapLegend.propTypes = {
+  selectedLayer: PropTypes.object
 };
 
 export default MapLegend;

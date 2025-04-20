@@ -8,22 +8,26 @@ import {
   Ruler, 
   Info, 
   Trash2, 
-  Eye, 
-  EyeOff,
   Maximize,
-  Link
+  Link,
+  ArrowUpDown
 } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import MeasureToolControl from '../Map/MeasureToolControl';
-import MapLegend from '../Map/MapLegend'; // Import the enhanced MapLegend component
-import { clearLayers as clearLayersApi, deleteLayer as deleteLayerApi } from '../../services/api';
+import MapLegend from '../Map/MapLegend';
+import LayersList from './LayersList';
+import { clearLayers as clearLayersApi } from '../../services/api';
 import './RightSidebar.css';
+import '../../styles/layerList.css';
 
 const RightSidebar = ({ showNotification }) => {
-  // Changed default to false (closed by default)
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState('layers'); // Default to layers
-  const { layers, toggleLayerVisibility, removeLayer, setLayerOpacity, clearLayers } = useMap();
+  const [selectedLayerId, setSelectedLayerId] = useState(null);
+  const { layers, clearLayers } = useMap();
+
+  // Find the selected layer object based on selectedLayerId
+  const selectedLayer = layers.find(layer => layer.id === selectedLayerId);
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -38,30 +42,17 @@ const RightSidebar = ({ showNotification }) => {
     }
   };
 
-  const handleToggleVisibility = (e, layerId) => {
-    e.stopPropagation();
-    toggleLayerVisibility(layerId);
-  };
-
-  const handleDeleteLayer = async (e, layerId) => {
-    e.stopPropagation();
-    try {
-      await deleteLayerApi(layerId);
-      removeLayer(layerId);
-      showNotification('Layer removed', 'success');
-    } catch (error) {
-      showNotification('Error removing layer', 'error');
-    }
-  };
-
-  const handleOpacityChange = (layerId, opacity) => {
-    setLayerOpacity(layerId, opacity);
+  const handleLayerSelect = (layerId) => {
+    setSelectedLayerId(layerId);
+    // Don't automatically switch tabs - we want to stay on the layers tab
+    // while centering the map on the selected layer
   };
 
   const handleClearLayers = async () => {
     try {
       await clearLayersApi();
       clearLayers();
+      setSelectedLayerId(null); // Clear selection when all layers are removed
       showNotification('All layers cleared successfully', 'success');
     } catch (error) {
       showNotification('Error clearing layers', 'error');
@@ -96,17 +87,10 @@ const RightSidebar = ({ showNotification }) => {
     showNotification('Sharing feature coming soon', 'info');
   };
 
-  // Get layer type color
-  const getLayerTypeColor = (type) => {
-    const typeColors = {
-      'RGB': 'rgb-color rgb-blue',
-      'NDVI': 'rgb-color rgb-green',
-      'SURFACE WATER': 'rgb-color rgb-cyan',
-      'LULC': 'rgb-color rgb-yellow',
-      'LST': 'rgb-color rgb-red'
-    };
-    
-    return typeColors[type] || 'rgb-color rgb-gray';
+  // Function to sort layers by different criteria
+  const handleSortLayers = () => {
+    // This could be expanded to show a dropdown with different sort options
+    showNotification('Layer sorting options coming soon', 'info');
   };
 
   return (
@@ -135,19 +119,19 @@ const RightSidebar = ({ showNotification }) => {
           <div className="sidebar-tabs">
             <button 
               className={`sidebar-tab ${activeSection === 'layers' ? 'active' : ''}`}
-              onClick={() => setActiveSection('layers')}
+              onClick={() => toggleSection('layers')}
             >
               Layers
             </button>
             <button 
               className={`sidebar-tab ${activeSection === 'measure' ? 'active' : ''}`}
-              onClick={() => setActiveSection('measure')}
+              onClick={() => toggleSection('measure')}
             >
               Measure
             </button>
             <button 
               className={`sidebar-tab ${activeSection === 'info' ? 'active' : ''}`}
-              onClick={() => setActiveSection('info')}
+              onClick={() => toggleSection('info')}
             >
               Info
             </button>
@@ -158,79 +142,50 @@ const RightSidebar = ({ showNotification }) => {
             {/* Layers Panel */}
             {activeSection === 'layers' && (
               <div className="content-panel">
-                {layers.length > 0 ? (
-                  <div className="layers-list">
-                    {layers.map(layer => {
-                      const isVisible = layer.visibility !== 'none';
-                      return (
-                        <div key={layer.id} className="layer-item">
-                          <div className="layer-item-header">
-                            <div className="layer-item-title">
-                              <div className={`layer-color ${getLayerTypeColor(layer.processing_type)}`}></div>
-                              <span className="layer-name">{layer.location}</span>
-                            </div>
-                            <div className="layer-actions">
-                              <button 
-                                className="layer-action-btn visibility-btn"
-                                onClick={(e) => handleToggleVisibility(e, layer.id)}
-                                title={isVisible ? "Hide layer" : "Show layer"}
-                              >
-                                {isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
-                              </button>
-                              <button 
-                                className="layer-action-btn delete-btn"
-                                onClick={(e) => handleDeleteLayer(e, layer.id)}
-                                title="Remove layer"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="layer-item-body">
-                            <div className="layer-type">
-                              {layer.processing_type}
-                            </div>
-                            
-                            {/* Opacity control */}
-                            <div className="opacity-control">
-                              <label className="opacity-label">Opacity:</label>
-                              <input 
-                                type="range" 
-                                min="0" 
-                                max="1" 
-                                step="0.1" 
-                                defaultValue={layer.opacity || 0.8}
-                                className="opacity-slider"
-                                onChange={(e) => handleOpacityChange(layer.id, parseFloat(e.target.value))}
-                              />
-                              <span className="opacity-value">
-                                {Math.round((layer.opacity || 0.8) * 100)}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-message">
-                      <p className="primary-message">No layers available</p>
-                      <p className="secondary-message">Enter a query to add a layer</p>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-google-grey-100 text-sm font-medium flex items-center gap-1">
+                    <Layers size={16} /> 
+                    <span>Map Layers</span>
+                    {layers.length > 0 && <span className="bg-google-bg-light text-xs px-2 py-0.5 rounded-full">{layers.length}</span>}
+                  </h3>
+                  {layers.length > 0 && (
+                    <div className="flex gap-2">
+                      <button 
+                        className="text-xs flex items-center gap-1 py-1 px-2 rounded border border-google-grey-300/20 text-google-grey-200 hover:bg-google-bg-lighter"
+                        title="Sort layers"
+                        onClick={handleSortLayers}
+                      >
+                        <ArrowUpDown size={14} />
+                        <span>Sort</span>
+                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 
-                {/* Clear Layers Button */}
-                {layers.length > 0 && (
-                  <div className="clear-layers-container">
-                    <button 
-                      className="clear-layers-btn"
-                      onClick={handleClearLayers}
-                    >
-                      Clear Layers
-                    </button>
+                {layers.length > 0 ? (
+                  <>
+                    {/* Pass onLayerSelect and selectedLayerId props to LayersList */}
+                    <LayersList 
+                      showNotification={showNotification} 
+                      onLayerSelect={handleLayerSelect}
+                      selectedLayerId={selectedLayerId}
+                    />
+                    
+                    {/* Clear Layers Button */}
+                    <div className="mt-4">
+                      <button 
+                        className="w-full py-2 px-4 rounded-md bg-google-red/10 text-google-red hover:bg-google-red/20 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                        onClick={handleClearLayers}
+                      >
+                        <Trash2 size={16} />
+                        Clear All Layers
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-google-bg-light rounded-lg p-6 text-center">
+                    <div className="text-google-grey-100 mb-2">No layers available</div>
+                    <p className="text-google-grey-300 text-sm">Enter a query in the search bar to add a layer to the map.</p>
                   </div>
                 )}
               </div>
@@ -243,10 +198,10 @@ const RightSidebar = ({ showNotification }) => {
               </div>
             )}
             
-            {/* Info Panel with Enhanced MapLegend that includes metadata */}
+            {/* Info Panel - Pass the selectedLayer to MapLegend if available */}
             {activeSection === 'info' && (
               <div className="content-panel">
-                <MapLegend />
+                <MapLegend selectedLayer={selectedLayer} />
               </div>
             )}
           </div>
@@ -261,6 +216,14 @@ const RightSidebar = ({ showNotification }) => {
               title="Layers"
             >
               <Layers size={20} />
+            </button>
+            
+            <button 
+              className={`sidebar-icon-btn ${activeSection === 'measure' ? 'active' : ''}`}
+              onClick={() => toggleSection('measure')}
+              title="Measure"
+            >
+              <Ruler size={20} />
             </button>
             
             <button 
