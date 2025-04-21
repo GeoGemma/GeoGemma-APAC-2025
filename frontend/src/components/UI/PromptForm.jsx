@@ -36,7 +36,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   
   // Recent search history (could be stored in local storage in a real app)
   const recentSearches = [
-    "NDVI Bangalore 2023",
+    "NDVI Manila 2025",
     "Surface water in Venice"
   ];
   

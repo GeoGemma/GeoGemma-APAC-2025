@@ -1,10 +1,10 @@
-/* src/styles/promptForm.css - Google-style */
+/* src/styles/promptForm.css - Google-style with reduced width */
 .prompt-container {
   position: absolute;
   bottom: 24px;
   left: 50%;
-  width: 580px;
-  max-width: 90%;
+  width: 480px; /* Reduced from 580px */
+  max-width: 80%; /* Reduced from 90% */
   transform: translateX(-50%);
   z-index: 100;
   transition: all 0.2s ease;
@@ -18,7 +18,7 @@
 .prompt-form {
   display: flex;
   align-items: center;
-  background-color: #181818; /* Updated to #181818 */
+  background-color: #181818;
   border-radius: 24px;
   padding: 4px 8px 4px 16px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
@@ -41,7 +41,7 @@
 
 .prompt-input {
   flex: 1;
-  padding: 12px 8px;
+  padding: 10px 6px; /* Slightly reduced padding */
   font-size: 14px;
   background: transparent;
   border: none;
@@ -75,8 +75,8 @@
 }
 
 .prompt-voice {
-  width: 40px;
-  height: 40px;
+  width: 36px; /* Reduced from 40px */
+  height: 36px; /* Reduced from 40px */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,8 +93,8 @@
 }
 
 .prompt-submit {
-  width: 40px;
-  height: 40px;
+  width: 36px; /* Reduced from 40px */
+  height: 36px; /* Reduced from 40px */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,13 +122,13 @@
   left: 0;
   right: 0;
   margin-bottom: 8px;
-  background: #181818; /* Updated to #181818 */
+  background: #181818;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   z-index: 101;
   border: 1px solid rgba(138, 180, 248, 0.2);
-  max-height: 350px;
+  max-height: 320px; /* Slightly reduced */
   overflow-y: auto;
 }
 
@@ -203,52 +203,64 @@
   }
 }
 
-/* Responsive adjustments */
+/* Improved responsive adjustments */
 @media (max-width: 768px) {
   .prompt-container {
-    width: calc(100% - 140px);
-    max-width: calc(100% - 140px);
-    left: calc(50% + 30px);
+    width: 400px; /* Fixed width for medium devices */
+    max-width: 70%; /* Reduced percentage */
+    left: 50%; /* Center it properly */
     bottom: 20px;
   }
   
   .prompt-input {
     font-size: 14px;
-    padding: 12px 6px;
+    padding: 10px 6px;
   }
   
   .prompt-suggestions {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  
-  .prompt-submit {
-    width: 38px;
-    height: 38px;
+    max-height: 260px;
   }
   
   .grid-suggestions {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* Single column on smaller screens */
   }
 }
 
 @media (max-width: 576px) {
   .prompt-container {
-    width: calc(100% - 100px);
-    max-width: calc(100% - 100px);
+    width: 320px; /* Further reduced for mobile */
+    max-width: 85%; /* Allow some space on sides */
+    bottom: 16px;
   }
   
   .prompt-icon {
-    padding: 0 6px;
+    padding: 0 4px;
   }
   
   .prompt-input {
-    padding: 10px 4px;
+    padding: 8px 4px;
     font-size: 13px;
   }
   
-  .prompt-submit {
-    width: 36px;
-    height: 36px;
+  .prompt-voice, .prompt-submit {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .prompt-clear {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 375px) {
+  .prompt-container {
+    width: 280px;
+    max-width: 90%;
+  }
+  
+  .prompt-voice {
+    display: none; /* Hide voice button on very small screens */
   }
 }

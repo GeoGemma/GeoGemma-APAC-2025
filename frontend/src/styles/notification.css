@@ -1,7 +1,7 @@
-/* src/styles/notification.css - Google-style */
+/* src/styles/notification.css - Google-style - Repositioned to appear below top bar */
 .notification {
   position: fixed;
-  bottom: 24px;
+  top: 56px; /* Position below the top bar (which is typically 56px) */
   left: 50%;
   transform: translateX(-50%);
   min-width: 280px;
@@ -15,7 +15,7 @@
   gap: 12px;
   z-index: 1000;
   overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.2, 0, 0, 1);
+  animation: slideDown 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .notification-icon {
@@ -116,30 +116,31 @@
   background-color: #f28b82;
 }
 
-/* Exit animation */
-.notification-exit {
-  animation: slideDown 0.3s cubic-bezier(0.2, 0, 0, 1) forwards;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
+/* Enter animation - slides down from top */
 @keyframes slideDown {
   from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Exit animation */
+.notification-exit {
+  animation: fadeOut 0.3s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes fadeOut {
+  from {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
   to {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(-10px);
   }
 }
 
@@ -149,11 +150,6 @@
     min-width: unset;
     width: calc(100% - 48px);
     max-width: 100%;
-    right: 24px;
-    left: 24px;
-    transform: none;
-    bottom: 24px;
-    padding: 12px 14px;
   }
   
   .notification-content {
