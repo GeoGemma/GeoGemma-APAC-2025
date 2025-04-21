@@ -1,4 +1,4 @@
-# Geollm
+# GeoGemma
 
 # Creating Virtual Environment
 py -m venv venv
