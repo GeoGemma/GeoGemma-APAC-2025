@@ -112,7 +112,7 @@ const LayersList = ({ showNotification, onLayerSelect, selectedLayerId }) => {
         // Insert at new position
         newLayers.splice(dragOverItemRef.current, 0, draggedLayer);
         
-        // Update layers via context
+        // Update layers via context - this will now properly reorder the visual stack
         reorderLayers(newLayers);
         
         showNotification('Layer order updated', 'success');

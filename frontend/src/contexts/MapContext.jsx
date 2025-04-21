@@ -211,51 +211,67 @@ export function MapProvider({ children }) {
     }
   };
   
-  // Function to reorder layers
+  // Function to reorder layers - Completely rewritten to fix the issue
   const reorderLayers = (newLayerOrder) => {
     if (!map) return;
     
-    // Update the state with the new layer order
-    setLayers(newLayerOrder);
+    // First, save all the layer data
+    const layerData = newLayerOrder.map(layer => ({
+      id: layer.id,
+      tile_url: layer.tile_url,
+      opacity: layer.opacity || 0.8,
+      visibility: layer.visibility || 'visible',
+      location: layer.location,
+      processing_type: layer.processing_type,
+      latitude: layer.latitude,
+      longitude: layer.longitude,
+      metadata: layer.metadata
+    }));
     
-    // Update the layer order in the map
-    // For maplibre/mapbox, higher z-index = higher visual layer
-    // Loop through layers in reverse order to set z-index correctly
-    newLayerOrder.forEach((layer, index) => {
+    // Remove all layers and sources from the map
+    layers.forEach(layer => {
       const mapLayerId = `ee-layer-${layer.id}`;
+      const mapSourceId = `ee-source-${layer.id}`;
+      
       if (map.getLayer(mapLayerId)) {
-        // Calculate z-index (higher value = rendered on top)
-        // Use reverse index so first item in array gets highest z-index
-        const zIndex = newLayerOrder.length - index;
-        
-        // In MapLibre, we can't directly set z-index
-        // We need to remove and re-add the layer to change the stacking order
-        try {
-          // Store the current layer properties
-          const sourceId = map.getLayer(mapLayerId).source;
-          const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
-          const opacity = map.getPaintProperty(mapLayerId, 'raster-opacity');
-          
-          // Remove the layer (but not its source)
-          map.removeLayer(mapLayerId);
-          
-          // Re-add the layer with the same properties
-          map.addLayer({
-            'id': mapLayerId,
-            'type': 'raster',
-            'source': sourceId,
-            'paint': {
-              'raster-opacity': opacity
-            },
-            'layout': {
-              'visibility': visibility
-            }
-          });
-        } catch (error) {
-          console.error(`Error reordering layer ${mapLayerId}:`, error);
-        }
+        map.removeLayer(mapLayerId);
+      }
+      
+      if (map.getSource(mapSourceId)) {
+        map.removeSource(mapSourceId);
       }
     });
+    
+    // Now add layers back to the map in REVERSE order of the UI list
+    // This is because in MapLibre, the last added layer appears on top
+    // We want the first layer in our UI list to be visually on top
+    [...layerData].reverse().forEach(layer => {
+      const sourceId = `ee-source-${layer.id}`;
+      const layerId = `ee-layer-${layer.id}`;
+      
+      // Add the source
+      map.addSource(sourceId, {
+        'type': 'raster',
+        'tiles': [layer.tile_url],
+        'tileSize': 256
+      });
+      
+      // Add the layer
+      map.addLayer({
+        'id': layerId,
+        'type': 'raster',
+        'source': sourceId,
+        'paint': {
+          'raster-opacity': layer.opacity
+        },
+        'layout': {
+          'visibility': layer.visibility
+        }
+      });
+    });
+    
+    // Update the state with the new order
+    setLayers(newLayerOrder);
     
     console.log("Layers reordered successfully");
   };
