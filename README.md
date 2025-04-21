@@ -1,4 +1,4 @@
-# GeoGemma: Earth Observation with Google Gemini
+# GeoGemma: Earth Observation with Google Earth & Gemma
 
 ![GeoGemma Logo](public/geoshort.png)
 
