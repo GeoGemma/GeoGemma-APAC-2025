@@ -690,11 +690,11 @@ Extract the following parameters:
     - Use 'OPEN BUILDINGS' for building footprints or heights.
     - If unsure, default to 'RGB'.
 3.  **Satellite (for RGB only):** Specify 'Sentinel-2' or 'Landsat 8' if mentioned. Default to 'Sentinel-2' if RGB is chosen and no satellite specified. Otherwise, output 'None'.
-4.  **Start Date:** Target start date (YYYY-MM-DD). Infer from phrases like "January 2023", "last summer", "start of 2020". If only a year is mentioned (e.g., "for 2021"), use YYYY-01-01. If "latest" or "most recent", use "latest". If unclear, output 'None'.
+4.  **Start Date:** Target start date (YYYY-MM-DD). Infer from phrases like "January 2023", "last summer", "start of 2020". If only a year is mentioned (e.g., "for 2021"), use YYYY-01-01. If "latest" or "most recent", use "latest".If use phrases like summer 2022 or some other phrases or whatever time
+you guess that user is reffering after inalyzing its prompt just give that time but in this format (YYYY-MM-DD).never say 'None' do pass something.
 5.  **End Date:** Target end date (YYYY-MM-DD). Infer similarly. If only a year is mentioned, use YYYY-12-31. If "latest" or "most recent", use "latest". If a single date/month/year is given, use the appropriate end date (e.g., end of month/year). If unclear or same as start date, output 'None'.
 6.  **Year (primarily for LST):** Extract the specific year (YYYY) if mentioned, especially for LST requests (e.g., "LST for 2020"). If LST is chosen and no year mentioned, use the year from Start Date if available, otherwise output 'None'. For other types, output 'None' unless explicitly requested for a specific year *composite*.
-7.  **Latitude:** Approximate latitude. Infer from the location if not explicitly given. If location is too vague (e.g., "Africa"), output 'None'.
-8.  **Longitude:** Approximate longitude. Infer from the location if not explicitly given. If location is too vague, output 'None'.
+
 
 Respond ONLY in the following format, ensuring each field is on a new line:
 Location: [Location string or None]
@@ -703,8 +703,7 @@ Satellite: [Sentinel-2 or Landsat 8 or None]
 Start Date: [YYYY-MM-DD or latest or None]
 End Date: [YYYY-MM-DD or latest or None]
 Year: [YYYY or latest or None]
-Latitude: [latitude float or None]
-Longitude: [longitude float or None]
+
 """
 
     try:

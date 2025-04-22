@@ -242,7 +242,8 @@ def get_clipped_tile_url(image: ee.Image, geometry: ee.Geometry, vis_params: Dic
         return None
 
 
-# --- process_image remains the same (doesn't need project_id directly) ---
+# This is the modified process_image function for ee_utils.py
+
 def process_image(geometry: ee.Geometry, processing_type: str, satellite: Optional[str] = None,
                  start_date: Optional[str] = None, end_date: Optional[str] = None,
                  year: Optional[int] = None) -> Tuple[Optional[ee.Image], Optional[Dict]]:
@@ -271,9 +272,9 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
         elif processing_type == 'LULC':
             image, vis_params = lulc.add_lulc(geometry)
         elif processing_type == 'LST':
-            # LST module handles year parsing including 'latest'
-            logging.info(f"Calling LST with geometry and year='{year}'")
-            image, vis_params = lst.add_landsat_lst(geometry, year) # Pass year directly
+            # Pass both year AND start_date/end_date to LST module
+            logging.info(f"Calling LST with geometry, year='{year}', and dates: {start_date} to {end_date}")
+            image, vis_params = lst.add_landsat_lst(geometry, year, start_date, end_date)
         elif processing_type == 'OPEN BUILDINGS':
             image, vis_params = openbuildings.add_open_buildings(geometry)
         else:
