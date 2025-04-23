@@ -2,7 +2,6 @@ import ee
 import datetime
 import logging
 import re
-from typing import Optional, Tuple, Dict, Union, Any
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -101,9 +100,9 @@ def get_date_range(start_date, end_date, year=None, month=None):
     if start_date == "latest":
         return "latest", "latest"
     
-    # Default start date if not provided - IMPROVED: Use 90 days instead of 30 for better chance of finding images
+    # Default start date if not provided
     if start_date is None:
-        start_date = (today - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
+        start_date = (today - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
     
     # Process end date
     end_date = parse_date_input(end_date)
@@ -182,73 +181,24 @@ def _add_sentinel2_rgb(geometry, start_date, end_date):
         s2_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
                          .filterBounds(geometry)
                          .filterDate(start_date, end_date)
-                         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30)))  # Increased cloud threshold to 30%
-        
-        # Check if collection is empty
+                         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)))
+
         collection_size = s2_collection.size().getInfo()
         logging.info(f"Found {collection_size} Sentinel-2 images")
-        
+
         if collection_size == 0:
             logging.warning(f"No Sentinel-2 images found for period {start_date} to {end_date}")
-            
-            # Try expanding the date range if specific dates were provided
-            if start_date != "latest" and end_date != "latest":
-                try:
-                    start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-                    end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-                    
-                    # If date range is less than 6 months, expand it
-                    if (end_dt - start_dt).days < 180:
-                        # Expand to 6 months centered on the original range
-                        mid_point = start_dt + (end_dt - start_dt) / 2
-                        expanded_start = (mid_point - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
-                        expanded_end = (mid_point + datetime.timedelta(days=90)).strftime('%Y-%m-%d')
-                        
-                        logging.info(f"Expanding date range to {expanded_start} to {expanded_end}")
-                        
-                        # Try again with expanded range
-                        expanded_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
-                                             .filterBounds(geometry)
-                                             .filterDate(expanded_start, expanded_end)
-                                             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30)))
-                        
-                        expanded_size = expanded_collection.size().getInfo()
-                        logging.info(f"Found {expanded_size} Sentinel-2 images in expanded range")
-                        
-                        if expanded_size > 0:
-                            s2_collection = expanded_collection
-                            collection_size = expanded_size
-                        else:
-                            # Fall back to Landsat if expanded range still returns no images
-                            logging.info("No Sentinel-2 images in expanded range, falling back to Landsat")
-                            return _add_landsat8_rgb(geometry, start_date, end_date)
-                    else:
-                        # Range already large, fall back to Landsat
-                        logging.info("Large date range with no S2 images, falling back to Landsat")
-                        return _add_landsat8_rgb(geometry, start_date, end_date)
-                        
-                except (ValueError, TypeError) as e:
-                    logging.error(f"Error expanding date range: {e}")
-                    # Fall back to Landsat
-                    return _add_landsat8_rgb(geometry, start_date, end_date)
-            else:
-                # "Latest" case with no images, fall back to Landsat
-                return _add_landsat8_rgb(geometry, start_date, end_date)
-            
-        # For latest imagery, use the most recent image
+            print(f"No imagery found for the time range {start_date} to {end_date}. Try a different time range or region.")
+            return None, None
+
         if start_date == "latest" and end_date == "latest":
-            # Sort by sensing date in descending order and get the most recent
             most_recent = s2_collection.sort('system:time_start', False).first()
             rgb_image = most_recent.select(['B4', 'B3', 'B2'])
-            
-            # Get the actual acquisition date for logging
             image_date = ee.Date(most_recent.get('system:time_start')).format('YYYY-MM-dd').getInfo()
             logging.info(f"Using most recent Sentinel-2 image from {image_date}")
         else:
-            # Use median composite for date ranges
             median_composite = s2_collection.median()
             rgb_image = median_composite.select(['B4', 'B3', 'B2'])
-            logging.info(f"Created median composite from {collection_size} Sentinel-2 images")
 
         vis_params = {
             'bands': ['B4', 'B3', 'B2'],
@@ -261,122 +211,38 @@ def _add_sentinel2_rgb(geometry, start_date, end_date):
         logging.error(f"Error in _add_sentinel2_rgb: {e}")
         return None, None
 
+
 def _add_landsat8_rgb(geometry, start_date, end_date):
-    """Adds Landsat 8/9 RGB imagery (internal function)."""
+    """Adds Landsat 8 RGB imagery (internal function)."""
     try:
-        logging.info(f"Fetching Landsat imagery from {start_date} to {end_date}")
-        
-        # Try Landsat 9 first (newer)
-        l9_collection = (ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
-                      .filterBounds(geometry)
-                      .filterDate(start_date, end_date)
-                      .filter(ee.Filter.lt('CLOUD_COVER', 35)))  # Increased cloud threshold
-        
-        l9_size = l9_collection.size().getInfo()
-        logging.info(f"Found {l9_size} Landsat 9 images")
-        
-        # Fall back to Landsat 8 if no L9 images
-        if l9_size == 0:
-            l8_collection = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
-                          .filterBounds(geometry)
-                          .filterDate(start_date, end_date)
-                          .filter(ee.Filter.lt('CLOUD_COVER', 35)))  # Increased cloud threshold
-            
-            l8_size = l8_collection.size().getInfo()
-            logging.info(f"Found {l8_size} Landsat 8 images")
-            
-            if l8_size == 0:
-                # If specific dates were provided, try expanding the range
-                if start_date != "latest" and end_date != "latest":
-                    try:
-                        start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-                        end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-                        
-                        # If date range is less than 6 months, expand it
-                        if (end_dt - start_dt).days < 180:
-                            # Expand to 6 months centered on the original range
-                            mid_point = start_dt + (end_dt - start_dt) / 2
-                            expanded_start = (mid_point - datetime.timedelta(days=120)).strftime('%Y-%m-%d')
-                            expanded_end = (mid_point + datetime.timedelta(days=120)).strftime('%Y-%m-%d')
-                            
-                            logging.info(f"Expanding date range for Landsat to {expanded_start} to {expanded_end}")
-                            
-                            # Try again with expanded range - combined L8 & L9
-                            l9_expanded = (ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
-                                         .filterBounds(geometry)
-                                         .filterDate(expanded_start, expanded_end)
-                                         .filter(ee.Filter.lt('CLOUD_COVER', 40)))
-                            
-                            l8_expanded = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
-                                         .filterBounds(geometry)
-                                         .filterDate(expanded_start, expanded_end)
-                                         .filter(ee.Filter.lt('CLOUD_COVER', 40)))
-                            
-                            # Merge collections
-                            merged_collection = l9_expanded.merge(l8_expanded)
-                            merged_size = merged_collection.size().getInfo()
-                            
-                            logging.info(f"Found {merged_size} Landsat 8/9 images in expanded range")
-                            
-                            if merged_size > 0:
-                                # We have images, now use L9 or L8 based on what was found
-                                if l9_expanded.size().getInfo() > 0:
-                                    l9_collection = l9_expanded
-                                    l9_size = l9_expanded.size().getInfo()
-                                else:
-                                    l8_collection = l8_expanded
-                                    l8_size = l8_expanded.size().getInfo()
-                            else:
-                                logging.error("No Landsat 8/9 images found even in expanded range")
-                                return None, None
-                    except (ValueError, TypeError) as e:
-                        logging.error(f"Error expanding date range for Landsat: {e}")
-                        return None, None
-                else:
-                    logging.error("No Landsat 8/9 images found for 'latest' request")
-                    return None, None
-            
-        # Select the appropriate collection and apply scale factors
+        logging.info(f"Fetching Landsat 8 imagery from {start_date} to {end_date}")
+        l8_collection = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+                         .filterBounds(geometry)
+                         .filterDate(start_date, end_date))
+
+        collection_size = l8_collection.size().getInfo()
+        logging.info(f"Found {collection_size} Landsat 8 images")
+
+        if collection_size == 0:
+            logging.warning(f"No Landsat 8 images found for period {start_date} to {end_date}")
+            print(f"No imagery found for the time range {start_date} to {end_date}. Try a different time range or region.")
+            return None, None
+
         def apply_scale_factors(image):
             opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
             thermalBands = image.select('ST_B.*').multiply(0.00341802).add(149.0)
             return image.addBands(opticalBands, None, True).addBands(thermalBands, None, True)
 
-        # Process Landsat 9 if available
-        if l9_size > 0:
-            l9_collection = l9_collection.map(apply_scale_factors)
-            
-            # For latest imagery, use the most recent image
-            if start_date == "latest" and end_date == "latest":
-                most_recent = l9_collection.sort('system:time_start', False).first()
-                rgb_image = most_recent.select(['SR_B4', 'SR_B3', 'SR_B2'])
-                
-                # Get acquisition date for logging
-                image_date = ee.Date(most_recent.get('system:time_start')).format('YYYY-MM-dd').getInfo()
-                logging.info(f"Using most recent Landsat 9 image from {image_date}")
-            else:
-                # Use median composite for date ranges
-                median_composite = l9_collection.median()
-                rgb_image = median_composite.select(['SR_B4', 'SR_B3', 'SR_B2'])
-                logging.info(f"Created median composite from {l9_size} Landsat 9 images")
-        
-        # Process Landsat 8 if no L9 available
+        l8_collection = l8_collection.map(apply_scale_factors)
+
+        if start_date == "latest" and end_date == "latest":
+            most_recent = l8_collection.sort('system:time_start', False).first()
+            rgb_image = most_recent.select(['SR_B4', 'SR_B3', 'SR_B2'])
+            image_date = ee.Date(most_recent.get('system:time_start')).format('YYYY-MM-dd').getInfo()
+            logging.info(f"Using most recent Landsat 8 image from {image_date}")
         else:
-            l8_collection = l8_collection.map(apply_scale_factors)
-            
-            # For latest imagery, use the most recent image
-            if start_date == "latest" and end_date == "latest":
-                most_recent = l8_collection.sort('system:time_start', False).first()
-                rgb_image = most_recent.select(['SR_B4', 'SR_B3', 'SR_B2'])
-                
-                # Get acquisition date for logging
-                image_date = ee.Date(most_recent.get('system:time_start')).format('YYYY-MM-dd').getInfo()
-                logging.info(f"Using most recent Landsat 8 image from {image_date}")
-            else:
-                # Use median composite for date ranges
-                median_composite = l8_collection.median()
-                rgb_image = median_composite.select(['SR_B4', 'SR_B3', 'SR_B2'])
-                logging.info(f"Created median composite from {l8_size} Landsat 8 images")
+            median_composite = l8_collection.median()
+            rgb_image = median_composite.select(['SR_B4', 'SR_B3', 'SR_B2'])
 
         vis_params = {
             'bands': ['SR_B4', 'SR_B3', 'SR_B2'],
@@ -386,64 +252,39 @@ def _add_landsat8_rgb(geometry, start_date, end_date):
         }
         return rgb_image, vis_params
     except Exception as e:
-        logging.error(f"Error in _add_landsat8_rgb: {e}", exc_info=True)
+        logging.error(f"Error in _add_landsat8_rgb: {e}")
         return None, None
 
 def add_rgb_imagery(geometry, satellite="Sentinel-2", start_date=None, end_date=None, year=None):
     """
-    Adds RGB imagery. Allows selecting Sentinel-2 or Landsat 8/9 with improved fallback.
+    Adds RGB imagery. Allows selecting Sentinel-2 or Landsat 8.
 
     Args:
         geometry: The region of interest (ee.Geometry).
         satellite: "Sentinel-2" (default) or "Landsat 8".
-        start_date: Start date (YYYY-MM-DD string). Defaults to 90 days ago.
-          Can be "latest" to fetch most recent imagery.
+        start_date: Start date (YYYY-MM-DD string). Defaults to 30 days ago.
         end_date: End date (YYYY-MM-DD string). Defaults to today.
         year: Year (integer) to use if start_date/end_date not specified.
 
     Returns:
         A tuple: (ee.Image, vis_params) or (None, None) on error.
     """
-    # First, check if we have a start_date that includes month/year info in the string
-    if isinstance(start_date, str):
-        month, extracted_year = extract_month_from_prompt(start_date)
-        if month is not None and extracted_year is not None:
-            # We found month and year in the string, use those to create a date range
-            start_date, end_date = get_date_range(None, None, extracted_year, month)
-            logging.info(f"Extracted date from string: Month {month}, Year {extracted_year}")
-    
-    # If not, check if we have a year parameter
-    elif year is not None:
-        # For "April 2022" type prompts identified by LLM, month might be encoded in start_date
-        # Let's have a fallback check on LLM output directly
-        month = 4 if "april" in str(start_date).lower() else None
-        
-        # Create date range based on year and month (if available)
-        start_date, end_date = get_date_range(start_date, end_date, year, month)
-        logging.info(f"Using year from parameter: {year}, month: {month if month else 'whole year'}")
-    
     # Handle "latest" keyword
-    elif isinstance(start_date, str) and "latest" in start_date.lower():
+    if isinstance(start_date, str) and "latest" in start_date.lower():
         logging.info("Latest imagery requested")
         # Set both dates to "latest" marker
         start_date = end_date = "latest"
     else:
-        # Regular date handling
-        start_date, end_date = get_date_range(start_date, end_date)
-    
-    # Log the final date range
+        # Use dates directly or derive from year if no dates provided
+        start_date, end_date = get_date_range(start_date, end_date, year)
+
     logging.info(f"Final date range: {start_date} to {end_date}")
 
     # Select the appropriate satellite imagery
-    if satellite and satellite.lower() == "landsat 8":
+    if satellite.lower() == "sentinel-2":
+        return _add_sentinel2_rgb(geometry, start_date, end_date)
+    elif satellite.lower() == "landsat 8":
         return _add_landsat8_rgb(geometry, start_date, end_date)
     else:
-        # Default to Sentinel-2 first, with Landsat fallback handled inside _add_sentinel2_rgb
-        image, vis_params = _add_sentinel2_rgb(geometry, start_date, end_date)
-        
-        # If Sentinel-2 failed and there's no fallback result yet, try Landsat explicitly
-        if image is None:
-            logging.info("No Sentinel-2 image found, falling back to Landsat")
-            return _add_landsat8_rgb(geometry, start_date, end_date)
-        
-        return image, vis_params
+        logging.error(f"Invalid satellite: {satellite}. Must be 'Sentinel-2' or 'Landsat 8'.")
+        return None, None

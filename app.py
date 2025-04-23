@@ -686,23 +686,45 @@ Extract the following parameters:
     - Use 'NDVI' for vegetation health, greenery.
     - Use 'Surface WATER' for water body mapping (rivers, lakes).
     - Use 'LULC' for land cover / land use classification.
-    - Use 'LST' for land surface temperature.
+    - Use 'LST' for land surface temperature, thermal variations etc.
     - Use 'OPEN BUILDINGS' for building footprints or heights.
     - If unsure, default to 'RGB'.
 3.  **Satellite (for RGB only):** Specify 'Sentinel-2' or 'Landsat 8' if mentioned. Default to 'Sentinel-2' if RGB is chosen and no satellite specified. Otherwise, output 'None'.
-4.  **Start Date:** Target start date (YYYY-MM-DD). Infer from phrases like "January 2023", "last summer", "start of 2020". If only a year is mentioned (e.g., "for 2021"), use YYYY-01-01. If "latest" or "most recent", use "latest".If use phrases like summer 2022 or some other phrases or whatever time
-you guess that user is reffering after inalyzing its prompt just give that time but in this format (YYYY-MM-DD).never say 'None' do pass something.
-5.  **End Date:** Target end date (YYYY-MM-DD). Infer similarly. If only a year is mentioned, use YYYY-12-31. If "latest" or "most recent", use "latest". If a single date/month/year is given, use the appropriate end date (e.g., end of month/year). If unclear or same as start date, output 'None'.
-6.  **Year (primarily for LST):** Extract the specific year (YYYY) if mentioned, especially for LST requests (e.g., "LST for 2020"). If LST is chosen and no year mentioned, use the year from Start Date if available, otherwise output 'None'. For other types, output 'None' unless explicitly requested for a specific year *composite*.
+4.  **Start Date:** Extract and return in format (YYYY-MM-DD). Apply the following rules:
+    - If both start and end dates are clearly provided, return both in (YYYY-MM-DD) format.
+    - If only a **year** is given → Start: YYYY-01-01. End: one year from start.
+    - If **month + year** → Start: YYYY-MM-01. End: two months from start.
+    - If **season** is mentioned → Use:
+        - Spring = YYYY-03-01  
+        - Summer = YYYY-06-01  
+        - Fall/Autumn = YYYY-09-01  
+        - Winter = YYYY-12-01  
+        → End date = +2 months
+    - If range like “July 2023 to Oct 2023” is mentioned → convert both to full (YYYY-MM-DD).
+    - If keywords like "latest", "updated", or "most recent" → Start: 2025-01-01, End: 2025-12-12.
+    - If unclear, missing, or ambiguous → Start: 2024-01-01, End: 2024-12-30.
+
+5.  **End Date:** Follows from above logic:
+    - If not explicitly given, infer from start date.
+    - If start is a full year → End = start + 1 year.
+    - If start includes month → End = start + 2 months.
+    - If season → End = start + 2 months.
+    - If keywords like “latest”, “updated” → use End: 2025-12-12.
+    - If unclear or missing → End: 2024-12-30.
+
+6.  **Year (primarily for LST):**
+    - If LST is chosen, extract the year (YYYY).
+    - If no year given but LST is requested, use year from Start Date.
+    - For other types, output year only if clearly mentioned for composite or multi-temporal analysis.
 
 
 Respond ONLY in the following format, ensuring each field is on a new line:
-Location: [Location string or None]
-Processing: [Processing Type]
-Satellite: [Sentinel-2 or Landsat 8 or None]
-Start Date: [YYYY-MM-DD or latest or None]
-End Date: [YYYY-MM-DD or latest or None]
-Year: [YYYY or latest or None]
+Location: [Location string or None]  
+Processing: [Processing Type]  
+Satellite: [Sentinel-2 or Landsat 8 or None]  
+Start Date: [YYYY-MM-DD]  
+End Date: [YYYY-MM-DD]   
+
 
 """
 
