@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx - Complete updated file with layer focus feature
+// src/contexts/MapContext.jsx
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 
@@ -211,7 +211,7 @@ export function MapProvider({ children }) {
     }
   };
   
-  // Function to reorder layers - Completely rewritten to fix the issue
+  // Function to reorder layers
   const reorderLayers = (newLayerOrder) => {
     if (!map) return;
     
@@ -276,7 +276,27 @@ export function MapProvider({ children }) {
     console.log("Layers reordered successfully");
   };
 
-  // NEW FUNCTION: Focus on a specific layer's output area
+  // Helper function to determine appropriate zoom level based on data type
+  const getAppropriateZoomLevel = (processingType) => {
+    switch(processingType) {
+      case 'RGB':
+        return 12;
+      case 'NDVI':
+        return 11;
+      case 'SURFACE WATER':
+        return 9;
+      case 'LULC':
+        return 10;
+      case 'LST':
+        return 9; 
+      case 'OPEN BUILDINGS':
+        return 14;
+      default:
+        return 10;
+    }
+  };
+
+  // Updated focusOnLayer function
   const focusOnLayer = (layerId) => {
     if (!map || !layerId) return;
     
@@ -288,89 +308,73 @@ export function MapProvider({ children }) {
     }
     
     try {
-      // If the layer has a defined bounding box in its metadata, use that
-      if (layer.metadata && (
-          (layer.metadata.BOUNDING_BOX) || 
-          (layer.metadata.bounding_box) ||
-          (layer.metadata.GEOMETRY_BOUNDS) ||
-          (layer.metadata.geometry_bounds)
-        )) {
-        // Get bounds from metadata
-        const bounds = layer.metadata.BOUNDING_BOX || 
-                      layer.metadata.bounding_box || 
-                      layer.metadata.GEOMETRY_BOUNDS || 
-                      layer.metadata.geometry_bounds;
-        
-        if (bounds && Array.isArray(bounds) && bounds.length === 4) {
-          // Format: [west, south, east, north]
-          map.fitBounds([
-            [bounds[0], bounds[1]], // Southwest
-            [bounds[2], bounds[3]]  // Northeast
-          ], { 
-            padding: 50,
-            duration: 1000
-          });
-          return;
-        }
-      }
+      console.log("Focusing on layer with metadata:", layer.metadata);
       
-      // If no explicit bounds found, try to use the geometry centroid from metadata
-      if (layer.metadata && layer.metadata.GEOMETRY_CENTROID) {
-        const centroidStr = layer.metadata.GEOMETRY_CENTROID;
-        const match = centroidStr.match(/Lon: ([-\d.]+), Lat: ([-\d.]+)/);
+      // First priority: Check for 'GEOMETRY CENTROID' field in the exact format from ee_metadata.py
+      if (layer.metadata && layer.metadata['GEOMETRY CENTROID']) {
+        const centroidStr = layer.metadata['GEOMETRY CENTROID'];
+        console.log("Found centroid string:", centroidStr);
+        
+        // Parse using regex that matches the exact format: "Lon: X.XXXX, Lat: Y.YYYY"
+        const match = centroidStr.match(/Lon:\s*([-\d.]+),\s*Lat:\s*([-\d.]+)/);
         
         if (match && match.length === 3) {
           const lon = parseFloat(match[1]);
           const lat = parseFloat(match[2]);
           
-          // Just center on the point, but with an appropriately zoomed view
+          if (!isNaN(lon) && !isNaN(lat)) {
+            // Get appropriate zoom level based on layer type
+            let zoomLevel = getAppropriateZoomLevel(layer.processing_type);
+            
+            console.log(`Flying to layer ${layerId} using parsed centroid: Lon=${lon}, Lat=${lat}, Zoom=${zoomLevel}`);
+            map.flyTo({
+              center: [lon, lat],
+              zoom: zoomLevel,
+              duration: 1000
+            });
+            return;
+          }
+        }
+      }
+      
+      // Second priority: Check for direct coordinates in layer object
+      if (layer.latitude !== undefined && layer.longitude !== undefined) {
+        const lat = parseFloat(layer.latitude);
+        const lon = parseFloat(layer.longitude);
+        
+        if (!isNaN(lat) && !isNaN(lon)) {
+          let zoomLevel = getAppropriateZoomLevel(layer.processing_type);
+          
+          console.log(`Flying to layer ${layerId} using layer coords: Lon=${lon}, Lat=${lat}, Zoom=${zoomLevel}`);
           map.flyTo({
             center: [lon, lat],
-            zoom: 10,
+            zoom: zoomLevel,
             duration: 1000
           });
           return;
         }
       }
       
-      // Fallback to the layer's stored coordinates
-      if (layer.latitude !== undefined && layer.longitude !== undefined) {
-        // Calculate a reasonable bounding box around the point based on the processing type
-        // Different processing types might need different zoom levels
-        let zoomLevel = 10; // Default zoom level
+      // Third priority: Check for REQUEST_CENTER coordinates
+      if (layer.metadata && layer.metadata.REQUEST_CENTER_LON && layer.metadata.REQUEST_CENTER_LAT) {
+        const lon = parseFloat(layer.metadata.REQUEST_CENTER_LON);
+        const lat = parseFloat(layer.metadata.REQUEST_CENTER_LAT);
         
-        // Adjust zoom level based on layer type
-        switch(layer.processing_type) {
-          case 'RGB':
-            zoomLevel = 12; // Closer zoom for RGB imagery
-            break;
-          case 'NDVI':
-            zoomLevel = 11;
-            break;
-          case 'SURFACE WATER':
-            zoomLevel = 9; // Wider view for water features
-            break;
-          case 'LULC':
-            zoomLevel = 10;
-            break;
-          case 'LST':
-            zoomLevel = 9; // Land surface temperature tends to be viewed over larger areas
-            break;
-          case 'OPEN BUILDINGS':
-            zoomLevel = 14; // Closer zoom for building details
-            break;
-          default:
-            zoomLevel = 10;
+        if (!isNaN(lon) && !isNaN(lat)) {
+          let zoomLevel = getAppropriateZoomLevel(layer.processing_type);
+          
+          console.log(`Flying to layer ${layerId} using request center: Lon=${lon}, Lat=${lat}, Zoom=${zoomLevel}`);
+          map.flyTo({
+            center: [lon, lat],
+            zoom: zoomLevel,
+            duration: 1000
+          });
+          return;
         }
-        
-        map.flyTo({
-          center: [layer.longitude, layer.latitude],
-          zoom: zoomLevel,
-          duration: 1500
-        });
-      } else {
-        console.warn(`Layer ${layerId} has no coordinate or boundary information`);
       }
+      
+      console.warn(`Couldn't find usable coordinates for layer ${layerId}`);
+      console.log("Available metadata:", layer.metadata);
     } catch (error) {
       console.error(`Error focusing on layer ${layerId}:`, error);
     }
@@ -426,7 +430,7 @@ export function MapProvider({ children }) {
     toggleLayerVisibility,
     setLayerOpacity,
     reorderLayers,
-    focusOnLayer, // Added the new function
+    focusOnLayer,
     addMarker,
     clearMarkers,
     flyToLocation,
