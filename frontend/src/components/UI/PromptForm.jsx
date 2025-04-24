@@ -5,16 +5,20 @@ import { Search, Mic, X, Send, Clock } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
 import { geocodeLocation, analyzePrompt } from '../../services/api';
 import { generateLayerId } from '../../utils/mapUtils';
+import { useAuth } from '../../contexts/AuthContext';
+import LoginPopup from './LoginPopup';
 import '../../styles/promptForm.css';
 
 const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
   const promptRef = useRef(null);
   const inputRef = useRef(null);
   const justSubmittedRef = useRef(false);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
+  const { currentUser } = useAuth();
 
   const examplePromptCategories = [
     {
@@ -56,6 +60,11 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
 
     if (!prompt.trim()) {
       showNotification('Please enter a prompt', 'warning');
+      return;
+    }
+
+    if (!currentUser) {
+      setShowLoginPopup(true);
       return;
     }
 
@@ -201,61 +210,66 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   };
 
   return (
-    <div className={`prompt-container ${isFocused ? 'focused' : ''}`} ref={promptRef}>
-      <form className="prompt-form" onSubmit={handleSubmit}>
-        <div className="prompt-icon"><Search size={18} /></div>
-        <input
-          ref={inputRef}
-          type="text"
-          className="prompt-input"
-          placeholder="Search for Earth imagery..."
-          value={prompt}
-          onChange={(e) => {
-            setPrompt(e.target.value);
-            setShowSuggestions(true); // ✅ Reopen suggestions on typing
-          }}
-          onFocus={handleInputFocus}
-        />
-        {prompt && (
-          <button type="button" className="prompt-clear" onClick={handleClearPrompt} title="Clear input">
-            <X size={16} />
-          </button>
-        )}
-        <button type="button" className="prompt-voice" title="Voice search"><Mic size={18} /></button>
-        <button type="submit" className="prompt-submit" title="Search"><Send size={16} /></button>
-      </form>
-
-      {showSuggestions && (
-        <div className="prompt-suggestions scale-in">
-          {recentSearches.length > 0 && (
-            <div className="suggestion-section">
-              <div className="suggestion-header">RECENT SEARCHES</div>
-              <div className="grid-suggestions">
-                {recentSearches.map((item, index) => (
-                  <div key={`recent-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
-                    <Clock size={16} className="suggestion-icon" />
-                    <span className="suggestion-text">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+    <>
+      <div className={`prompt-container ${isFocused ? 'focused' : ''}`} ref={promptRef}>
+        <form className="prompt-form" onSubmit={handleSubmit}>
+          <div className="prompt-icon"><Search size={18} /></div>
+          <input
+            ref={inputRef}
+            type="text"
+            className="prompt-input"
+            placeholder="Search for Earth imagery..."
+            value={prompt}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setShowSuggestions(true); // ✅ Reopen suggestions on typing
+            }}
+            onFocus={handleInputFocus}
+          />
+          {prompt && (
+            <button type="button" className="prompt-clear" onClick={handleClearPrompt} title="Clear input">
+              <X size={16} />
+            </button>
           )}
-          {examplePromptCategories.map((category, catIndex) => (
-            <div className="suggestion-section" key={`category-${catIndex}`}>
-              <div className="suggestion-header">{category.name.toUpperCase()}</div>
-              <div className="grid-suggestions">
-                {category.prompts.map((item, index) => (
-                  <div key={`example-${category.name}-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
-                    <Search size={16} className="suggestion-icon" />
-                    <span className="suggestion-text">{item}</span>
-                  </div>
-                ))}
+          <button type="button" className="prompt-voice" title="Voice search"><Mic size={18} /></button>
+          <button type="submit" className="prompt-submit" title="Search"><Send size={16} /></button>
+        </form>
+    
+        {showSuggestions && (
+          <div className="prompt-suggestions scale-in">
+            {recentSearches.length > 0 && (
+              <div className="suggestion-section">
+                <div className="suggestion-header">RECENT SEARCHES</div>
+                <div className="grid-suggestions">
+                  {recentSearches.map((item, index) => (
+                    <div key={`recent-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
+                      <Clock size={16} className="suggestion-icon" />
+                      <span className="suggestion-text">{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+            {examplePromptCategories.map((category, catIndex) => (
+              <div className="suggestion-section" key={`category-${catIndex}`}>
+                <div className="suggestion-header">{category.name.toUpperCase()}</div>
+                <div className="grid-suggestions">
+                  {category.prompts.map((item, index) => (
+                    <div key={`example-${category.name}-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
+                      <Search size={16} className="suggestion-icon" />
+                      <span className="suggestion-text">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {showLoginPopup && (
+        <LoginPopup onClose={() => setShowLoginPopup(false)} />
       )}
-    </div>
+    </>
   );
 };
 
