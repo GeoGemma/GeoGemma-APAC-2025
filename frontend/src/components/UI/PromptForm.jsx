@@ -13,9 +13,9 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const promptRef = useRef(null);
   const inputRef = useRef(null);
+  const justSubmittedRef = useRef(false);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
-  
-  // Create separate prompt categories to allow for better organization
+
   const examplePromptCategories = [
     {
       name: "Popular",
@@ -33,99 +33,78 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       ]
     }
   ];
-  
-  // Recent search history (could be stored in local storage in a real app)
+
   const recentSearches = [
     "NDVI Manila 2025",
     "Surface water in Venice"
   ];
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (promptRef.current && !promptRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
     };
-    
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!prompt.trim()) {
       showNotification('Please enter a prompt', 'warning');
       return;
     }
-    
+
+    justSubmittedRef.current = true;
+    setShowSuggestions(false);
+    if (inputRef.current) inputRef.current.blur();
+
     showLoading('Processing your request...');
-    
+
     try {
-      // Emit event for chat to capture the prompt
       const promptEvent = new CustomEvent('prompt-submitted', {
-        detail: { prompt: prompt, response: null }
+        detail: { prompt, response: null }
       });
       window.dispatchEvent(promptEvent);
-      
-      // Clear existing markers
+
       clearMarkers();
-      
-      // Use the API service function
+
       const result = await analyzePrompt(prompt);
-      
       console.log('API response:', result);
-      
-      // Response to show in chat
+
       let responseText = '';
-      
+
       if (result && result.success && result.data) {
-        const { 
-          location, 
-          processing_type, 
-          tile_url, 
-          latitude, 
-          longitude,
-          metadata // Ensure we capture the metadata from the API response
-        } = result.data;
-        
+        const { location, processing_type, tile_url, latitude, longitude, metadata } = result.data;
+
         if (tile_url) {
-          console.log('Tile URL:', tile_url);
-          console.log('Metadata:', metadata);
-          
-          // Create a new layer ID
           const layerId = generateLayerId(location, processing_type || prompt);
-          
-          // Add the new layer to the map
           const newLayer = {
             id: layerId,
-            tile_url: tile_url,
-            location: location,
+            tile_url,
+            location,
             processing_type: processing_type || prompt,
             latitude: latitude || null,
             longitude: longitude || null,
             opacity: 0.8,
             visibility: 'visible',
-            metadata: metadata // Include metadata in the layer object
+            metadata
           };
-          
-          console.log("Adding new layer:", newLayer);
           addLayer(newLayer);
-          
-          // Handle location navigation
+
           if (location && location.trim() !== '') {
             if (latitude && longitude) {
               const lat = parseFloat(latitude);
               const lon = parseFloat(longitude);
-              
               if (!isNaN(lat) && !isNaN(lon)) {
                 addMarker(lat, lon);
                 flyToLocation(location, lat, lon);
               }
             } else {
-              // Try to geocode the location
               try {
                 const geocodeResult = await geocodeLocation(location);
                 if (geocodeResult) {
@@ -137,73 +116,56 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
               }
             }
           }
-          
-          // Format a more descriptive response text that includes metadata highlights if available
+
+          responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. `;
           if (metadata) {
-            responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. `;
-            
-            // Add metadata highlights
             if (metadata.STATUS === 'Metadata Processed Successfully' || metadata.Status === 'Metadata Processed Successfully') {
-              // Include some key metadata in the response
               if (metadata.IMAGE_DATE || metadata['IMAGE DATE']) {
                 responseText += `Image date: ${metadata.IMAGE_DATE || metadata['IMAGE DATE']}. `;
               }
               if (metadata.SOURCE_DATASET || metadata['SOURCE DATASET']) {
                 responseText += `Source: ${metadata.SOURCE_DATASET || metadata['SOURCE DATASET']}. `;
               }
-              
-              // Add statistics if available
               const statsKey = Object.keys(metadata).find(key => key.includes('STATS'));
-              if (statsKey && metadata[statsKey] && typeof metadata[statsKey] === 'object') {
+              if (statsKey && typeof metadata[statsKey] === 'object') {
                 const stats = metadata[statsKey];
                 if (stats.Mean) responseText += `Average value: ${stats.Mean}. `;
               }
             }
-            
             responseText += "You can see it on the map now and check the Info panel for more details.";
           } else {
-            responseText = `I've added ${processing_type || 'imagery'} layer for ${location}. You can see it on the map now.`;
+            responseText += "You can see it on the map now.";
           }
-          
+
           showNotification(`Added layer: ${location} (${processing_type || prompt})`, 'success');
         } else {
-          responseText = 'I couldn\'t generate a visualization for this request. Please try a different location or data type.';
+          responseText = "I couldn't generate a visualization for this request.";
           showNotification('Error: No visualization data available', 'error');
         }
       } else {
-        responseText = result && result.message 
-          ? `I couldn't process that request: ${result.message}` 
-          : 'I couldn\'t find imagery for that location. Could you try a more specific request?';
+        responseText = result?.message || "No imagery available for this request.";
         showNotification(responseText, 'error');
       }
-      
-      // Emit event with the response to update chat
-      const responseEvent = new CustomEvent('prompt-submitted', {
+
+      window.dispatchEvent(new CustomEvent('prompt-submitted', {
         detail: { prompt: null, response: responseText }
-      });
-      window.dispatchEvent(responseEvent);
-      
-      // Clear the input
+      }));
+
       setPrompt('');
-      
     } catch (error) {
       console.error('Error processing prompt:', error);
       let errorMessage = 'There was a problem processing your request';
-      
       if (error.response) {
-        errorMessage += `: ${error.response.data?.message || error.response.statusText || 'Server error'}`;
+        errorMessage += `: ${error.response.data?.message || error.response.statusText}`;
       } else if (error.request) {
-        errorMessage += ': No response from server. Please check your connection.';
+        errorMessage += ': No response from server.';
       } else {
-        errorMessage += `: ${error.message || 'Unknown error'}`;
+        errorMessage += `: ${error.message}`;
       }
-      
-      // Emit event with the error to update chat
-      const errorEvent = new CustomEvent('prompt-submitted', {
+
+      window.dispatchEvent(new CustomEvent('prompt-submitted', {
         detail: { prompt: null, response: errorMessage }
-      });
-      window.dispatchEvent(errorEvent);
-      
+      }));
       showNotification(errorMessage, 'error');
     } finally {
       hideLoading();
@@ -212,6 +174,10 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   };
 
   const handleInputFocus = () => {
+    if (justSubmittedRef.current) {
+      justSubmittedRef.current = false;
+      return;
+    }
     setIsFocused(true);
     setShowSuggestions(true);
   };
@@ -226,7 +192,6 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const handleSuggestionClick = (suggestion) => {
     setPrompt(suggestion);
     setShowSuggestions(false);
-    // Auto-submit the form after selecting a suggestion
     setTimeout(() => {
       if (promptRef.current) {
         const form = promptRef.current.querySelector('form');
@@ -237,49 +202,29 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
 
   return (
     <div className={`prompt-container ${isFocused ? 'focused' : ''}`} ref={promptRef}>
-      <form 
-        className="prompt-form"
-        onSubmit={handleSubmit}
-      >
-        <div className="prompt-icon">
-          <Search size={18} />
-        </div>
+      <form className="prompt-form" onSubmit={handleSubmit}>
+        <div className="prompt-icon"><Search size={18} /></div>
         <input
           ref={inputRef}
           type="text"
           className="prompt-input"
           placeholder="Search for Earth imagery..."
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+            setShowSuggestions(true); // ✅ Reopen suggestions on typing
+          }}
           onFocus={handleInputFocus}
         />
         {prompt && (
-          <button 
-            type="button" 
-            className="prompt-clear"
-            onClick={handleClearPrompt}
-            title="Clear input"
-          >
+          <button type="button" className="prompt-clear" onClick={handleClearPrompt} title="Clear input">
             <X size={16} />
           </button>
         )}
-        <button 
-          type="button" 
-          className="prompt-voice"
-          title="Voice search"
-        >
-          <Mic size={18} />
-        </button>
-        <button 
-          type="submit" 
-          className="prompt-submit"
-          title="Search"
-        >
-          <Send size={16} />
-        </button>
+        <button type="button" className="prompt-voice" title="Voice search"><Mic size={18} /></button>
+        <button type="submit" className="prompt-submit" title="Search"><Send size={16} /></button>
       </form>
 
-      {/* Suggestions dropdown with better organization */}
       {showSuggestions && (
         <div className="prompt-suggestions scale-in">
           {recentSearches.length > 0 && (
@@ -287,11 +232,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
               <div className="suggestion-header">RECENT SEARCHES</div>
               <div className="grid-suggestions">
                 {recentSearches.map((item, index) => (
-                  <div
-                    key={`recent-${index}`}
-                    className="suggestion-item"
-                    onClick={() => handleSuggestionClick(item)}
-                  >
+                  <div key={`recent-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
                     <Clock size={16} className="suggestion-icon" />
                     <span className="suggestion-text">{item}</span>
                   </div>
@@ -299,17 +240,12 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
               </div>
             </div>
           )}
-          
           {examplePromptCategories.map((category, catIndex) => (
             <div className="suggestion-section" key={`category-${catIndex}`}>
               <div className="suggestion-header">{category.name.toUpperCase()}</div>
               <div className="grid-suggestions">
                 {category.prompts.map((item, index) => (
-                  <div
-                    key={`example-${category.name}-${index}`}
-                    className="suggestion-item"
-                    onClick={() => handleSuggestionClick(item)}
-                  >
+                  <div key={`example-${category.name}-${index}`} className="suggestion-item" onClick={() => handleSuggestionClick(item)}>
                     <Search size={16} className="suggestion-icon" />
                     <span className="suggestion-text">{item}</span>
                   </div>

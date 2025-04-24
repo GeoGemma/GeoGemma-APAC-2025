@@ -40,7 +40,7 @@ def _geocode_location(location: str) -> Optional[Tuple[float, float]]:
         logging.error(f"Unexpected error during geocoding for {location}: {e}")
         return None
 
-def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
+async def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
                       latitude: Optional[float] = None, longitude: Optional[float] = None,
                       llm=None, LLM_INITIALIZED=False) -> Optional[ee.Geometry]:
     """
@@ -66,36 +66,20 @@ def get_admin_boundary(location: str, start_date: Optional[str] = None, end_date
             # Fallback to LLM
             logging.warning("No coordinates found with Geopy, attempting LLM-assisted geocoding")
             if llm and LLM_INITIALIZED:
-                # Use await if get_llm_coordinates is async, otherwise call directly
-                # Assuming get_llm_coordinates might become async later:
-                # llm_coords = await get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED)
-                # For now, assuming it's synchronous if not explicitly awaited in app.py
                 try:
-                    # This might require running in an event loop if get_llm_coordinates is async
-                    # For simplicity here, assuming it can be called synchronously or needs adaptation
-                    # based on how it's used elsewhere. If called from async context, use await.
-                    # If synchronous context, needs asyncio.run or similar if get_llm_coordinates is async.
-                    # Let's assume it's called from an async context where needed.
-                    # If called synchronously, this part might need adjustment.
-                    import asyncio
-                    try:
-                        loop = asyncio.get_running_loop()
-                        llm_coords = loop.run_until_complete(get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED))
-                    except RuntimeError: # No running event loop
-                         llm_coords = asyncio.run(get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED))
-
+                    # Properly await the async function
+                    llm_coords = await get_llm_coordinates(location, start_date, end_date, llm, LLM_INITIALIZED)
+                    
+                    if llm_coords:
+                        latitude, longitude = llm_coords
+                        point = ee.Geometry.Point(longitude, latitude)
+                        logging.info(f"LLM provided coordinates: {latitude}, {longitude}")
+                    else:
+                        logging.warning("LLM could not provide coordinates.")
+                        return None
                 except Exception as llm_e:
                      logging.error(f"Error calling async get_llm_coordinates: {llm_e}")
-                     llm_coords = None
-
-
-                if llm_coords:
-                    latitude, longitude = llm_coords
-                    point = ee.Geometry.Point(longitude, latitude)
-                    logging.info(f"LLM provided coordinates: {latitude}, {longitude}")
-                else:
-                    logging.warning("LLM could not provide coordinates.")
-                    return None
+                     return None
             else:
                 logging.warning("LLM not available for geocoding fallback")
                 return None
@@ -303,7 +287,7 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
 
 
 # MODIFIED: Ensure project_id parameter is accepted and passed down correctly
-def get_tile_url(location: str, processing_type: str, project_id: str, satellite: Optional[str] = None,
+async def get_tile_url(location: str, processing_type: str, project_id: str, satellite: Optional[str] = None,
                 start_date: Optional[str] = None, end_date: Optional[str] = None, year: Optional[int] = None,
                 latitude: Optional[float] = None, longitude: Optional[float] = None,
                 llm=None, LLM_INITIALIZED=False) -> Tuple[Optional[str], Optional[Dict]]:
@@ -325,7 +309,7 @@ def get_tile_url(location: str, processing_type: str, project_id: str, satellite
 
     try:
         # Get the administrative boundary (doesn't need project_id)
-        geometry = get_admin_boundary(location, start_date, end_date, latitude, longitude, llm, LLM_INITIALIZED)
+        geometry = await get_admin_boundary(location, start_date, end_date, latitude, longitude, llm, LLM_INITIALIZED)
         if geometry is None:
             logging.warning(f"Could not retrieve administrative boundary for {location}")
             # Return failure status in metadata

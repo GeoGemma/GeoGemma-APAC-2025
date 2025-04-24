@@ -18,3 +18,5 @@ pymongo
 motor
 beanie
 fastapi-users[mongodb]
+
+google-cloud-firestore>=2.16.0

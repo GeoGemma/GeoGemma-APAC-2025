@@ -6,14 +6,19 @@ import {
   HelpCircle, 
   Info
 } from 'lucide-react';
+import UserProfile from '../UI/UserProfile';
+import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/header.css';
+import '../../styles/layout.css';
 
-const Layout = ({ children, sidebarExpanded }) => {
+const Layout = ({ children, sidebarExpanded, showNotification }) => {
+  const { currentUser } = useAuth();
+  
   // Determine header class based on sidebar state
   const headerClass = sidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed';
 
   return (
-    <div className="layout-container">
+    <div className={`layout-container app-layout ${sidebarExpanded ? 'sidebar-expanded' : ''}`}>
       {/* Top header - Google style */}
       <div className={`top-header ${headerClass}`}>
         <div className="top-header-logo">
@@ -23,13 +28,26 @@ const Layout = ({ children, sidebarExpanded }) => {
           </div>
         </div>
         <div className="top-header-actions">
-          <button className="top-header-button" title="Settings">
+          {currentUser && <UserProfile />}
+          <button 
+            className="top-header-button" 
+            title="Settings"
+            onClick={() => showNotification && showNotification('Settings will be available soon', 'info')}
+          >
             <Settings size={20} />
           </button>
-          <button className="top-header-button" title="Help">
+          <button 
+            className="top-header-button" 
+            title="Help"
+            onClick={() => showNotification && showNotification('Help documentation will be available soon', 'info')}
+          >
             <HelpCircle size={20} />
           </button>
-          <button className="top-header-button" title="About">
+          <button 
+            className="top-header-button" 
+            title="About"
+            onClick={() => showNotification && showNotification('GeoGemma - A Google Research Project', 'info')}
+          >
             <Info size={20} />
           </button>
         </div>
@@ -44,11 +62,13 @@ const Layout = ({ children, sidebarExpanded }) => {
 
 Layout.propTypes = {
   children: PropTypes.node.isRequired,
-  sidebarExpanded: PropTypes.bool
+  sidebarExpanded: PropTypes.bool,
+  showNotification: PropTypes.func
 };
 
 Layout.defaultProps = {
-  sidebarExpanded: false
+  sidebarExpanded: false,
+  showNotification: null
 };
 
 export default Layout;

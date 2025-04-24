@@ -1,6 +1,8 @@
-// src/contexts/MapContext.jsx
+// src/contexts/MapContext.jsx - Complete updated file with layer focus feature
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
+import { useAuth } from './AuthContext';
+import { getMapLayers, saveMapLayer, deleteMapLayer, clearUserLayers } from '../services/api';
 
 const MapContext = createContext(null);
 
@@ -9,6 +11,7 @@ export function MapProvider({ children }) {
   const [layers, setLayers] = useState([]);
   const [markers, setMarkers] = useState([]);
   const mapInitializedRef = useRef(false);
+  const { currentUser } = useAuth();
   
   // Store map position
   const [mapState, setMapState] = useState({
@@ -24,6 +27,60 @@ export function MapProvider({ children }) {
       if (map) map.remove();
     };
   }, [map]);
+
+  // Fetch saved layers when user is authenticated
+  useEffect(() => {
+    const fetchUserLayers = async () => {
+      if (currentUser && currentUser.uid) {
+        try {
+          console.log(`Fetching layers for user ${currentUser.uid}`);
+          const response = await getMapLayers(currentUser.uid);
+          
+          if (response.success && response.data && Array.isArray(response.data)) {
+            // Sort by timestamp if available, newest first
+            const sortedLayers = [...response.data].sort((a, b) => 
+              (b.timestamp || 0) - (a.timestamp || 0)
+            );
+            
+            // Don't replace layers if there are no saved layers
+            if (sortedLayers.length > 0) {
+              console.log(`Loaded ${sortedLayers.length} layers from Firestore`);
+              setLayers(sortedLayers);
+              
+              // Add each layer to the map if it exists
+              if (map) {
+                // Clear existing layers first to avoid duplicates
+                layers.forEach(layer => {
+                  const layerId = `ee-layer-${layer.id}`;
+                  const sourceId = `ee-source-${layer.id}`;
+                  
+                  if (map.getLayer(layerId)) {
+                    map.removeLayer(layerId);
+                  }
+                  if (map.getSource(sourceId)) {
+                    map.removeSource(sourceId);
+                  }
+                });
+                
+                // Add the loaded layers to the map (in reverse so newest is on top)
+                [...sortedLayers].reverse().forEach(layer => {
+                  if (layer.tile_url) {
+                    addLayerToMap(map, layer, `ee-source-${layer.id}`, `ee-layer-${layer.id}`, setLayers);
+                  }
+                });
+              }
+            }
+          } else {
+            console.log('No saved layers found or error fetching layers');
+          }
+        } catch (error) {
+          console.error('Error fetching user layers:', error);
+        }
+      }
+    };
+    
+    fetchUserLayers();
+  }, [currentUser, map]);
 
   const initializeMap = (container) => {
     if (mapInitializedRef.current) return;
@@ -61,7 +118,7 @@ export function MapProvider({ children }) {
     mapInitializedRef.current = true;
   };
 
-  const addLayer = (layerData) => {
+  const addLayer = async (layerData) => {
     if (!map) {
       console.error("Map is not initialized yet");
       return;
@@ -91,6 +148,22 @@ export function MapProvider({ children }) {
       } else {
         // Pass the map instance explicitly
         addLayerToMap(map, layerData, sourceId, layerId, setLayers);
+      }
+      
+      // Save layer to Firestore if user is authenticated
+      if (currentUser && currentUser.uid) {
+        try {
+          // Add timestamp for sorting
+          const layerWithTimestamp = {
+            ...layerData,
+            timestamp: Date.now()
+          };
+          
+          await saveMapLayer(currentUser.uid, layerData.id, layerWithTimestamp);
+          console.log(`Layer ${layerData.id} saved to Firestore`);
+        } catch (error) {
+          console.error('Error saving layer to Firestore:', error);
+        }
       }
     } catch (error) {
       console.error("Error in addLayer:", error);
@@ -138,7 +211,7 @@ export function MapProvider({ children }) {
     }
   };
 
-  const removeLayer = (layerId) => {
+  const removeLayer = async (layerId) => {
     if (!map) return;
     
     const mapLayerId = `ee-layer-${layerId}`;
@@ -153,6 +226,16 @@ export function MapProvider({ children }) {
     }
 
     setLayers(prev => prev.filter(layer => layer.id !== layerId));
+    
+    // Remove from Firestore if user is authenticated
+    if (currentUser && currentUser.uid) {
+      try {
+        await deleteMapLayer(currentUser.uid, layerId);
+        console.log(`Layer ${layerId} removed from Firestore`);
+      } catch (error) {
+        console.error('Error removing layer from Firestore:', error);
+      }
+    }
   };
 
   const clearLayers = () => {
@@ -174,6 +257,21 @@ export function MapProvider({ children }) {
 
     setLayers([]);
     clearMarkers();
+    
+    // Clear layers from Firestore if the user is authenticated
+    if (currentUser && currentUser.uid) {
+      try {
+        clearUserLayers(currentUser.uid)
+          .then(response => {
+            console.log('All layers cleared from Firestore');
+          })
+          .catch(error => {
+            console.error('Error clearing layers from Firestore:', error);
+          });
+      } catch (error) {
+        console.error('Error calling clearUserLayers:', error);
+      }
+    }
   };
 
   const toggleLayerVisibility = (layerId) => {
@@ -192,6 +290,21 @@ export function MapProvider({ children }) {
           ? { ...layer, visibility: newVisibility } 
           : layer
       ));
+      
+      // Update in Firestore if user is authenticated
+      if (currentUser && currentUser.uid) {
+        const updatedLayer = layers.find(layer => layer.id === layerId);
+        if (updatedLayer) {
+          try {
+            saveMapLayer(currentUser.uid, layerId, {
+              ...updatedLayer,
+              visibility: newVisibility
+            });
+          } catch (error) {
+            console.error('Error updating layer visibility in Firestore:', error);
+          }
+        }
+      }
     }
   };
 
@@ -208,10 +321,25 @@ export function MapProvider({ children }) {
           ? { ...layer, opacity } 
           : layer
       ));
+      
+      // Update in Firestore if user is authenticated
+      if (currentUser && currentUser.uid) {
+        const updatedLayer = layers.find(layer => layer.id === layerId);
+        if (updatedLayer) {
+          try {
+            saveMapLayer(currentUser.uid, layerId, {
+              ...updatedLayer,
+              opacity
+            });
+          } catch (error) {
+            console.error('Error updating layer opacity in Firestore:', error);
+          }
+        }
+      }
     }
   };
   
-  // Function to reorder layers
+  // Function to reorder layers - Completely rewritten to fix the issue
   const reorderLayers = (newLayerOrder) => {
     if (!map) return;
     
@@ -225,7 +353,8 @@ export function MapProvider({ children }) {
       processing_type: layer.processing_type,
       latitude: layer.latitude,
       longitude: layer.longitude,
-      metadata: layer.metadata
+      metadata: layer.metadata,
+      timestamp: layer.timestamp || Date.now()
     }));
     
     // Remove all layers and sources from the map
@@ -246,39 +375,53 @@ export function MapProvider({ children }) {
     // This is because in MapLibre, the last added layer appears on top
     // We want the first layer in our UI list to be visually on top
     [...layerData].reverse().forEach(layer => {
-      const sourceId = `ee-source-${layer.id}`;
-      const layerId = `ee-layer-${layer.id}`;
-      
-      // Add the source
-      map.addSource(sourceId, {
-        'type': 'raster',
-        'tiles': [layer.tile_url],
-        'tileSize': 256
-      });
-      
-      // Add the layer
-      map.addLayer({
-        'id': layerId,
-        'type': 'raster',
-        'source': sourceId,
-        'paint': {
-          'raster-opacity': layer.opacity
-        },
-        'layout': {
-          'visibility': layer.visibility
-        }
-      });
+      if (layer.tile_url) {
+        const sourceId = `ee-source-${layer.id}`;
+        const layerId = `ee-layer-${layer.id}`;
+        
+        // Add the source
+        map.addSource(sourceId, {
+          'type': 'raster',
+          'tiles': [layer.tile_url],
+          'tileSize': 256
+        });
+        
+        // Add the layer
+        map.addLayer({
+          'id': layerId,
+          'type': 'raster',
+          'source': sourceId,
+          'paint': {
+            'raster-opacity': layer.opacity
+          },
+          'layout': {
+            'visibility': layer.visibility
+          }
+        });
+      }
     });
     
     // Update the state with the new order
     setLayers(newLayerOrder);
     
+    // Update in Firestore if user is authenticated
+    if (currentUser && currentUser.uid) {
+      try {
+        // This would require a batch update operation
+        // For now, we'll just update the UI and skip Firestore update
+        console.log("Layers reordered successfully in UI (Firestore batch update not implemented)");
+      } catch (error) {
+        console.error('Error updating layer order in Firestore:', error);
+      }
+    }
+    
     console.log("Layers reordered successfully");
   };
 
-  // Helper function to determine appropriate zoom level based on data type
+  // NEW FUNCTION: Focus on a specific layer's output area
+  // Helper for zoom level based on processing type
   const getAppropriateZoomLevel = (processingType) => {
-    switch(processingType) {
+    switch (processingType) {
       case 'RGB':
         return 12;
       case 'NDVI':
@@ -288,7 +431,7 @@ export function MapProvider({ children }) {
       case 'LULC':
         return 10;
       case 'LST':
-        return 9; 
+        return 9;
       case 'OPEN BUILDINGS':
         return 14;
       default:
@@ -296,7 +439,7 @@ export function MapProvider({ children }) {
     }
   };
 
-  // Updated focusOnLayer function
+  // Updated focusOnLayer function as requested
   const focusOnLayer = (layerId) => {
     if (!map || !layerId) return;
     
@@ -430,7 +573,7 @@ export function MapProvider({ children }) {
     toggleLayerVisibility,
     setLayerOpacity,
     reorderLayers,
-    focusOnLayer,
+    focusOnLayer, // Added the new function
     addMarker,
     clearMarkers,
     flyToLocation,

@@ -7,6 +7,9 @@ from functools import lru_cache
 from typing import Optional, List, Dict, Any, Union, Tuple
 import json
 import sys # Import sys for exit
+import asyncio
+from asyncio import Semaphore
+import time
 
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -24,17 +27,68 @@ import google.auth.credentials
 import datetime
 from starlette.middleware.sessions import SessionMiddleware
 
+# Add rate limiting middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
+from starlette.status import HTTP_429_TOO_MANY_REQUESTS
+import time
+from collections import defaultdict
+
+# Rate limiting middleware
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, requests_per_minute=60):
+        super().__init__(app)
+        self.requests_per_minute = requests_per_minute
+        self.request_timestamps = defaultdict(list)
+
+    async def dispatch(self, request: StarletteRequest, call_next):
+        client_ip = request.client.host
+        current_time = time.time()
+        
+        # Clear out timestamps that are older than 60 seconds
+        self.request_timestamps[client_ip] = [
+            timestamp for timestamp in self.request_timestamps[client_ip]
+            if current_time - timestamp < 60
+        ]
+        
+        # Check if too many requests
+        if len(self.request_timestamps[client_ip]) >= self.requests_per_minute:
+            return Response(
+                content=json.dumps({
+                    "error": "Too many requests",
+                    "message": "Please try again in a moment"
+                }),
+                status_code=HTTP_429_TOO_MANY_REQUESTS,
+                media_type="application/json"
+            )
+        
+        # Record the current request timestamp
+        self.request_timestamps[client_ip].append(current_time)
+        
+        # Process the request
+        response = await call_next(request)
+        return response
+
 # MODIFIED: Pass project_id to initialize_ee
 from authenticate_ee import initialize_ee
 
 # Load environment variables FROM .env FILE FIRST
 load_dotenv()
 
+# --- Firestore Integration ---
+import firestore_db
+
 # --- REMOVED HARDCODED OVERRIDE ---
 # os.environ['EE_PROJECT_ID'] = 'ee-hanzilabinyounasai' # NO LONGER NEEDED
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Earth Engine concurrency control
+# Limit to a reasonable number of concurrent EE operations
+# This helps prevent "Computation timed out" errors
+EE_SEMAPHORE = Semaphore(5)  # Allow max 5 concurrent EE operations
 
 # FastAPI app setup
 app = FastAPI(
@@ -45,6 +99,9 @@ app = FastAPI(
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
 )
+
+# Add rate limiting middleware - limit to 60 requests per minute per IP
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 
 # Middleware
 app.add_middleware(
@@ -300,21 +357,23 @@ async def process_prompt(request: Request, prompt: str = Form(...)):
 
             logging.info(f"Analysis Result: Loc={location}, Type={processing_type}, Sat={satellite}, Start={start_date}, End={end_date}, Year={year}, Lat={latitude}, Lon={longitude}")
 
-            # Get the tile URL and metadata
-            # MODIFIED: Pass the PROJECT_ID read from environment
-            tile_url, metadata = get_tile_url(
-                location=location,
-                processing_type=processing_type,
-                project_id=PROJECT_ID, # <-- Pass loaded Project ID
-                satellite=satellite,
-                start_date=start_date,
-                end_date=end_date,
-                year=year,
-                latitude=latitude,
-                longitude=longitude,
-                llm=llm,
-                LLM_INITIALIZED=LLM_INITIALIZED
-            )
+            # Use the semaphore to limit concurrent Earth Engine operations
+            async with EE_SEMAPHORE:
+                # Get the tile URL and metadata
+                # MODIFIED: Pass the PROJECT_ID read from environment
+                tile_url, metadata = await get_tile_url(
+                    location=location,
+                    processing_type=processing_type,
+                    project_id=PROJECT_ID, # <-- Pass loaded Project ID
+                    satellite=satellite,
+                    start_date=start_date,
+                    end_date=end_date,
+                    year=year,
+                    latitude=latitude,
+                    longitude=longitude,
+                    llm=llm,
+                    LLM_INITIALIZED=LLM_INITIALIZED
+                )
 
             # Error handling based on tile_url/metadata remains the same
             if metadata and metadata.get("Status") and "fail" in metadata["Status"].lower():
@@ -405,21 +464,23 @@ async def api_analyze_prompt(request: AnalysisRequest):
 
         data = analysis_result.dict() # Includes location, type, dates, etc.
 
-        # Get tile URL and metadata
-        # MODIFIED: Pass the PROJECT_ID read from environment
-        tile_url, metadata = get_tile_url(
-            location=data["location"],
-            processing_type=data["processing_type"],
-            project_id=PROJECT_ID, # <-- Pass loaded Project ID
-            satellite=data.get("satellite"),
-            start_date=data.get("start_date"),
-            end_date=data.get("end_date"),
-            year=data.get("year"),
-            latitude=data.get("latitude"),
-            longitude=data.get("longitude"),
-            llm=llm,
-            LLM_INITIALIZED=LLM_INITIALIZED
-        )
+        # Use the semaphore to limit concurrent Earth Engine operations
+        async with EE_SEMAPHORE:
+            # Get tile URL and metadata
+            # MODIFIED: Pass the PROJECT_ID read from environment
+            tile_url, metadata = await get_tile_url(
+                location=data["location"],
+                processing_type=data["processing_type"],
+                project_id=PROJECT_ID, # <-- Pass loaded Project ID
+                satellite=data.get("satellite"),
+                start_date=data.get("start_date"),
+                end_date=data.get("end_date"),
+                year=data.get("year"),
+                latitude=data.get("latitude"),
+                longitude=data.get("longitude"),
+                llm=llm,
+                LLM_INITIALIZED=LLM_INITIALIZED
+            )
 
         # Add results to the data dictionary
         data["tile_url"] = tile_url
@@ -862,6 +923,115 @@ End Date: [YYYY-MM-DD]
         logging.exception(f"Error analyzing prompt with LLM: {e}")
         return None
 
+
+# --- Firestore-backed API Endpoints ---
+
+from pydantic import BaseModel
+
+class UserProfile(BaseModel):
+    user_id: str
+    profile: dict
+
+@app.post("/api/user-profile")
+async def create_user_profile(profile: UserProfile):
+    firestore_db.create_user_profile(profile.user_id, profile.profile)
+    return {"status": "success"}
+
+@app.get("/api/user-profile/{user_id}")
+async def get_user_profile(user_id: str):
+    profile = firestore_db.get_user_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+@app.patch("/api/user-profile/{user_id}")
+async def update_user_profile(user_id: str, updates: dict):
+    firestore_db.update_user_profile(user_id, updates)
+    return {"status": "updated"}
+
+class LayerData(BaseModel):
+    user_id: str
+    layer_id: str
+    layer: dict
+
+@app.post("/api/layers")
+async def save_map_layer(data: LayerData):
+    firestore_db.save_map_layer(data.user_id, data.layer_id, data.layer)
+    return {"status": "success"}
+
+@app.get("/api/layers/{user_id}")
+async def get_map_layers(user_id: str):
+    return firestore_db.get_map_layers(user_id)
+
+class AnalysisData(BaseModel):
+    user_id: str
+    analysis_id: str
+    analysis: dict
+
+@app.post("/api/analyses")
+async def save_analysis(data: AnalysisData):
+    firestore_db.save_analysis(data.user_id, data.analysis_id, data.analysis)
+    return {"status": "success"}
+
+@app.get("/api/analyses/{user_id}")
+async def get_analyses(user_id: str):
+    return firestore_db.get_analyses(user_id)
+
+class ChatMessage(BaseModel):
+    user_id: str
+    message_id: str
+    message: dict
+
+@app.post("/api/chat-history")
+async def save_chat_message(data: ChatMessage):
+    firestore_db.save_chat_message(data.user_id, data.message_id, data.message)
+    return {"status": "success"}
+
+@app.get("/api/chat-history/{user_id}")
+async def get_chat_history(user_id: str):
+    return firestore_db.get_chat_history(user_id)
+
+class CustomAreaData(BaseModel):
+    user_id: str
+    area_id: str
+    area: dict
+
+@app.post("/api/custom-areas")
+async def save_custom_area(data: CustomAreaData):
+    firestore_db.save_custom_area(data.user_id, data.area_id, data.area)
+    return {"status": "success"}
+
+@app.get("/api/custom-areas/{user_id}")
+async def get_custom_areas(user_id: str):
+    return firestore_db.get_custom_areas(user_id)
+
+class AnalyticsEvent(BaseModel):
+    event: dict
+
+@app.post("/api/analytics")
+async def log_analytics(event: AnalyticsEvent):
+    firestore_db.log_usage(event.event)
+    return {"status": "logged"}
+
+# Delete a specific layer for a user
+@app.delete("/api/layers/{user_id}/{layer_id}")
+async def delete_user_layer(user_id: str, layer_id: str):
+    try:
+        firestore_db.delete_map_layer(user_id, layer_id)
+        return {"status": "success", "message": f"Layer {layer_id} deleted for user {user_id}"}
+    except Exception as e:
+        logging.error(f"Error deleting layer: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete layer: {str(e)}")
+
+# Clear all layers for a user
+@app.delete("/api/layers/{user_id}")
+async def clear_user_layers(user_id: str):
+    try:
+        firestore_db.clear_user_layers(user_id)
+        return {"status": "success", "message": f"All layers cleared for user {user_id}"}
+    except Exception as e:
+        logging.error(f"Error clearing layers: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear layers: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

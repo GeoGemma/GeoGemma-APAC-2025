@@ -1,6 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
 import { MapProvider } from './contexts/MapContext';
+import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout/Layout';
 import AppMap from './components/Map/AppMap';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -81,52 +82,54 @@ function App() {
   };
 
   return (
-    <MapProvider>
-      <GlobalStyles />
-      <Layout sidebarExpanded={sidebarExpanded}>
-        <Sidebar 
-          showNotification={showNotification} 
-          toggleTimeSeries={toggleTimeSeries}
-          toggleComparison={toggleComparison}
-          onToggleSidebar={toggleSidebar}
-        />
-        <AppMap />
-        <RightSidebar showNotification={showNotification} />
-        <PromptForm 
-          showNotification={showNotification} 
-          showLoading={showLoading}
-          hideLoading={hideLoading}
-        />
-        
-        {/* The standalone MapLegend component is removed, as it's now integrated into the RightSidebar */}
-        
-        {showTimeSeries && (
-          <TimeSeriesAnalysis 
-            showNotification={showNotification}
+    <AuthProvider>
+      <MapProvider>
+        <GlobalStyles />
+        <Layout sidebarExpanded={sidebarExpanded}>
+          <Sidebar 
+            showNotification={showNotification} 
+            toggleTimeSeries={toggleTimeSeries}
+            toggleComparison={toggleComparison}
+            onToggleSidebar={toggleSidebar}
+          />
+          <AppMap />
+          <RightSidebar showNotification={showNotification} />
+          <PromptForm 
+            showNotification={showNotification} 
             showLoading={showLoading}
             hideLoading={hideLoading}
           />
-        )}
-        
-        {showComparison && (
-          <ComparisonAnalysis 
-            showNotification={showNotification}
-            showLoading={showLoading}
-            hideLoading={hideLoading}
-          />
-        )}
-        
-        {notification && (
-          <Notification 
-            message={notification.message} 
-            type={notification.type} 
-          />
-        )}
-        {isLoading && (
-          <StatusIndicator message={loadingMessage} />
-        )}
-      </Layout>
-    </MapProvider>
+          
+          {/* The standalone MapLegend component is removed, as it's now integrated into the RightSidebar */}
+          
+          {showTimeSeries && (
+            <TimeSeriesAnalysis 
+              showNotification={showNotification}
+              showLoading={showLoading}
+              hideLoading={hideLoading}
+            />
+          )}
+          
+          {showComparison && (
+            <ComparisonAnalysis 
+              showNotification={showNotification}
+              showLoading={showLoading}
+              hideLoading={hideLoading}
+            />
+          )}
+          
+          {notification && (
+            <Notification 
+              message={notification.message} 
+              type={notification.type} 
+            />
+          )}
+          {isLoading && (
+            <StatusIndicator message={loadingMessage} />
+          )}
+        </Layout>
+      </MapProvider>
+    </AuthProvider>
   );
 }
 

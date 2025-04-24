@@ -43,14 +43,36 @@ const handleApiError = (error) => {
 };
 
 // API functions
-export const analyzePrompt = async (prompt, options = {}) => {
+export const analyzePrompt = async (prompt, userId = null) => {
   try {
+    console.log(`Analyzing prompt with user ID: ${userId}`);
+    
     // First try with axios
     const response = await api.post('/api/analyze', {
       prompt,
-      save_result: options.saveResult !== false,
-      user_id: options.userId || null
+      save_result: !!userId, // Only save if user is authenticated
+      user_id: userId
     });
+    
+    // If the analysis was successful and user is authenticated, save the layer
+    if (response.data.success && userId && response.data.data && response.data.data.tile_url) {
+      try {
+        // Save the layer to the user's account
+        const layerId = `layer_${Date.now()}`;
+        await saveMapLayer(userId, layerId, {
+          id: layerId,
+          tile_url: response.data.data.tile_url,
+          location: response.data.data.location,
+          processing_type: response.data.data.processing_type,
+          timestamp: Date.now(),
+          metadata: response.data.data.metadata || null
+        });
+        console.log(`Layer saved for user ${userId}`);
+      } catch (saveError) {
+        console.error('Error saving layer:', saveError);
+        // Don't fail the overall request if saving fails
+      }
+    }
     
     return response.data;
   } catch (axiosError) {
@@ -65,8 +87,8 @@ export const analyzePrompt = async (prompt, options = {}) => {
         },
         body: JSON.stringify({ 
           prompt,
-          save_result: options.saveResult !== false,
-          user_id: options.userId || null
+          save_result: !!userId,
+          user_id: userId
         })
       });
       
@@ -74,7 +96,29 @@ export const analyzePrompt = async (prompt, options = {}) => {
         throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      
+      // If the analysis was successful and user is authenticated, save the layer
+      if (data.success && userId && data.data && data.data.tile_url) {
+        try {
+          // Save the layer to the user's account
+          const layerId = `layer_${Date.now()}`;
+          await saveMapLayer(userId, layerId, {
+            id: layerId,
+            tile_url: data.data.tile_url,
+            location: data.data.location,
+            processing_type: data.data.processing_type,
+            timestamp: Date.now(),
+            metadata: data.data.metadata || null
+          });
+          console.log(`Layer saved for user ${userId}`);
+        } catch (saveError) {
+          console.error('Error saving layer:', saveError);
+          // Don't fail the overall request if saving fails
+        }
+      }
+      
+      return data;
     } catch (fetchError) {
       console.error('Fetch fallback also failed:', fetchError);
       return handleApiError(fetchError);
@@ -142,18 +186,30 @@ export const clearLayers = async () => {
   }
 };
 
-export const createTimeSeriesAnalysis = async (data) => {
+export const createTimeSeriesAnalysis = async (data, userId = null) => {
   try {
-    const response = await api.post('/api/time-series', data);
+    // Include user ID if available
+    const requestData = {
+      ...data,
+      user_id: userId
+    };
+    
+    const response = await api.post('/api/time-series', requestData);
     return response.data;
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-export const createComparisonAnalysis = async (data) => {
+export const createComparisonAnalysis = async (data, userId = null) => {
   try {
-    const response = await api.post('/api/comparison', data);
+    // Include user ID if available
+    const requestData = {
+      ...data,
+      user_id: userId
+    };
+    
+    const response = await api.post('/api/comparison', requestData);
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -228,3 +284,136 @@ export const getSystemHealth = async () => {
 };
 
 export default api;
+// --- Firestore-backed API functions ---
+
+// User Profile
+export const getUserProfile = async (userId) => {
+  try {
+    const response = await api.get(`/api/user-profile/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const createUserProfile = async (userId, profile) => {
+  try {
+    const response = await api.post('/api/user-profile', { user_id: userId, profile });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const updateUserProfile = async (userId, updates) => {
+  try {
+    const response = await api.patch(`/api/user-profile/${userId}`, updates);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Map Layers (Firestore)
+export const saveMapLayer = async (userId, layerId, layer) => {
+  try {
+    const response = await api.post('/api/layers', { user_id: userId, layer_id: layerId, layer });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getMapLayers = async (userId) => {
+  try {
+    const response = await api.get(`/api/layers/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const deleteMapLayer = async (userId, layerId) => {
+  try {
+    const response = await api.delete(`/api/layers/${userId}/${layerId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const clearUserLayers = async (userId) => {
+  try {
+    const response = await api.delete(`/api/layers/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Analyses (Firestore)
+export const saveAnalysis = async (userId, analysisId, analysis) => {
+  try {
+    const response = await api.post('/api/analyses', { user_id: userId, analysis_id: analysisId, analysis });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getAnalysesFirestore = async (userId) => {
+  try {
+    const response = await api.get(`/api/analyses/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Chat History
+export const saveChatMessage = async (userId, messageId, message) => {
+  try {
+    const response = await api.post('/api/chat-history', { user_id: userId, message_id: messageId, message });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getChatHistory = async (userId) => {
+  try {
+    const response = await api.get(`/api/chat-history/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Custom Areas
+export const saveCustomArea = async (userId, areaId, area) => {
+  try {
+    const response = await api.post('/api/custom-areas', { user_id: userId, area_id: areaId, area });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const getCustomAreas = async (userId) => {
+  try {
+    const response = await api.get(`/api/custom-areas/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Analytics Logging
+export const logAnalytics = async (event) => {
+  try {
+    const response = await api.post('/api/analytics', { event });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return handleApiError(error);
+  }
+};

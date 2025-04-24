@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy the Google service account key for Earth Engine authentication
+COPY geogemma-f32a4-firebase-adminsdk-fbsvc-204a010d07.json /app/service-account.json
+
 # Create directories if they don't exist
 RUN mkdir -p static templates
 
@@ -25,6 +28,9 @@ EXPOSE 8000
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+
+# Set the environment variable for Google authentication
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json
 
 # Command to run the application
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
