@@ -119,9 +119,6 @@ app.add_middleware(
     same_site="lax"
 )
 
-# Static files and templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
 # Project ID - READ FROM ENVIRONMENT (loaded by load_dotenv)
 # MODIFIED: Critical check if ID is missing
@@ -742,13 +739,20 @@ async def analyze_prompt(prompt: str) -> Optional[AnalysisResult]:
 
 Extract the following parameters:
 1.  **Location:** City and country (e.g., "Paris, France"). If ambiguous, state the ambiguity.
-2.  **Processing Type:** Choose ONE from: RGB, NDVI, Surface WATER, LULC, LST, OPEN BUILDINGS.
+2.  **Processing Type:** Choose ONE from: RGB, NDVI, Surface WATER, LULC, LST, OPEN BUILDINGS,TREE_COVER, FOREST_LOSS, FOREST_GAIN.
     - Use 'RGB' for general satellite views, true color, visual imagery.
     - Use 'NDVI' for vegetation health, greenery.
     - Use 'Surface WATER' for water body mapping (rivers, lakes).
     - Use 'LULC' for land cover / land use classification.
-    - Use 'LST' for land surface temperature, thermal variations etc.
+    - Use 'LST' for land surface temperature, thermal variations, lst etc.
     - Use 'OPEN BUILDINGS' for building footprints or heights.
+    - Use "TREE_COVER" for Tree Cover or Forest Cover or Forest in 2000 layer.
+    - Use "FOREST_LOSS" for Forest Loss or Tree loss or Deforestation Year layer.
+    - Use "FOREST_GAIN" for Forest Gain or Tree Gain layer.
+    - Use "SAR" for RADAR imagery, Cloud free imagery or Synthetic Aperture Radar imagery.
+    - If prompt contains “tree cover" use "TREE_COVER".
+    - If prompt contains “forest loss" use "FOREST_LOSS".
+    - If prompt contains “forest gain" use "FOREST_GAIN".
     - If unsure, default to 'RGB'.
 3.  **Satellite (for RGB only):** Specify 'Sentinel-2' or 'Landsat 8' if mentioned. Default to 'Sentinel-2' if RGB is chosen and no satellite specified. Otherwise, output 'None'.
 4.  **Start Date:** Extract and return in format (YYYY-MM-DD). Apply the following rules:
@@ -833,7 +837,7 @@ End Date: [YYYY-MM-DD]
         longitude_str = None if longitude_str.lower() == 'none' else longitude_str.strip()
 
         # Validate processing type
-        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS']
+        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS','TREE_COVER', 'FOREST_LOSS', 'FOREST_GAIN','SAR']
         if processing_type not in valid_processing:
              logging.warning(f"LLM returned invalid processing type '{processing_type}', defaulting to RGB.")
              processing_type = 'RGB'
