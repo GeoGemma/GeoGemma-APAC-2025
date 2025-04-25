@@ -6,7 +6,7 @@ import re
 import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings
+from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings, forest_change, SAR
 import google.auth.credentials
 from functools import lru_cache
 from typing import Dict, Tuple, Optional, List, Union, Any
@@ -261,6 +261,18 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
             image, vis_params = lst.add_landsat_lst(geometry, year, start_date, end_date)
         elif processing_type == 'OPEN BUILDINGS':
             image, vis_params = openbuildings.add_open_buildings(geometry)
+        elif processing_type == 'TREE_COVER':
+            logging.info("Calling add_tree_cover")
+            image, vis_params = forest_change.add_tree_cover(geometry)
+        elif processing_type == 'SAR':
+            logging.info("Calling SAR Imagery function")
+            image, vis_params = SAR.add_sar_imagery(geometry, start_date, end_date)
+        elif processing_type == 'FOREST_LOSS':
+            logging.info("Calling add_forest_loss")
+            image, vis_params = forest_change.add_forest_loss(geometry)
+        elif processing_type == 'FOREST_GAIN':
+            image, vis_params = forest_change.add_forest_gain(geometry)
+
         else:
             logging.warning(f"Invalid processing type: {processing_type}")
             return None, None
