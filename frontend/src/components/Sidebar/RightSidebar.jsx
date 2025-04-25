@@ -5,7 +5,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Layers, 
-  Ruler, 
+  Crosshair, 
   Info, 
   Trash2, 
   Maximize,
@@ -13,7 +13,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { useMap } from '../../contexts/MapContext';
-import MeasureToolControl from '../Map/MeasureToolControl';
+import MapInspector from '../Map/MapInspector';
 import MapLegend from '../Map/MapLegend';
 import LayersList from './LayersList';
 import { clearLayers as clearLayersApi } from '../../services/api';
@@ -124,10 +124,10 @@ const RightSidebar = ({ showNotification }) => {
               Layers
             </button>
             <button 
-              className={`sidebar-tab ${activeSection === 'measure' ? 'active' : ''}`}
-              onClick={() => toggleSection('measure')}
+              className={`sidebar-tab ${activeSection === 'inspect' ? 'active' : ''}`}
+              onClick={() => toggleSection('inspect')}
             >
-              Measure
+              Inspect
             </button>
             <button 
               className={`sidebar-tab ${activeSection === 'info' ? 'active' : ''}`}
@@ -191,10 +191,10 @@ const RightSidebar = ({ showNotification }) => {
               </div>
             )}
             
-            {/* Measure Panel */}
-            {activeSection === 'measure' && (
+            {/* Inspect Panel - Replaced the old Measure panel */}
+            {activeSection === 'inspect' && (
               <div className="content-panel">
-                <MeasureToolControl showNotification={showNotification} />
+                <MapInspector showNotification={showNotification} />
               </div>
             )}
             
@@ -219,11 +219,11 @@ const RightSidebar = ({ showNotification }) => {
             </button>
             
             <button 
-              className={`sidebar-icon-btn ${activeSection === 'measure' ? 'active' : ''}`}
-              onClick={() => toggleSection('measure')}
-              title="Measure"
+              className={`sidebar-icon-btn ${activeSection === 'inspect' ? 'active' : ''}`}
+              onClick={() => toggleSection('inspect')}
+              title="Inspect"
             >
-              <Ruler size={20} />
+              <Crosshair size={20} />
             </button>
             
             <button 

@@ -1,6 +1,7 @@
 // src/components/Layout/TopBar.jsx
 import PropTypes from 'prop-types';
 import { Settings, HelpCircle, Info } from 'lucide-react';
+import ProfileMenu from '../UI/ProfileMenu';
 
 const TopBar = ({ showNotification }) => {
   return (
@@ -40,6 +41,9 @@ const TopBar = ({ showNotification }) => {
         >
           <Info size={18} />
         </button>
+        
+        {/* Add ProfileMenu component */}
+        <ProfileMenu />
       </div>
     </div>
   );

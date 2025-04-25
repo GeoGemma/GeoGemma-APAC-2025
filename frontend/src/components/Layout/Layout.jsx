@@ -6,7 +6,7 @@ import {
   HelpCircle, 
   Info
 } from 'lucide-react';
-import UserProfile from '../UI/UserProfile';
+import ProfileMenu from '../UI/ProfileMenu';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/header.css';
 import '../../styles/layout.css';
@@ -28,7 +28,6 @@ const Layout = ({ children, sidebarExpanded, showNotification }) => {
           </div>
         </div>
         <div className="top-header-actions">
-          {currentUser && <UserProfile />}
           <button 
             className="top-header-button" 
             title="Settings"
@@ -50,6 +49,8 @@ const Layout = ({ children, sidebarExpanded, showNotification }) => {
           >
             <Info size={20} />
           </button>
+          {/* Add ProfileMenu component */}
+          <ProfileMenu />
         </div>
       </div>
       

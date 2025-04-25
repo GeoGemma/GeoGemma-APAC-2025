@@ -11,11 +11,10 @@ import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
 import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
-// The MapLegend import is removed as it's now integrated in the RightSidebar
+// Import the new ProfileMenu CSS
+import './styles/profileMenu.css';
 import './styles/font.css';
-// Keeping mapLegend.css for styling that might be used by MapLegendInfo
 import './styles/mapLegend.css';
-// Add new metadata styling
 import './styles/metadata.css';
 
 // Define custom CSS variables for the Google theme
@@ -85,7 +84,10 @@ function App() {
     <AuthProvider>
       <MapProvider>
         <GlobalStyles />
-        <Layout sidebarExpanded={sidebarExpanded}>
+        <Layout 
+          sidebarExpanded={sidebarExpanded}
+          showNotification={showNotification}
+        >
           <Sidebar 
             showNotification={showNotification} 
             toggleTimeSeries={toggleTimeSeries}
@@ -99,8 +101,6 @@ function App() {
             showLoading={showLoading}
             hideLoading={hideLoading}
           />
-          
-          {/* The standalone MapLegend component is removed, as it's now integrated into the RightSidebar */}
           
           {showTimeSeries && (
             <TimeSeriesAnalysis 

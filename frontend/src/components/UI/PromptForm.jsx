@@ -14,9 +14,11 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const promptRef = useRef(null);
   const inputRef = useRef(null);
   const justSubmittedRef = useRef(false);
+  const recognitionRef = useRef(null);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
   const { currentUser } = useAuth();
 
@@ -42,6 +44,50 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
     "NDVI Manila 2025",
     "Surface water in Venice"
   ];
+
+  // Initialize speech recognition
+  useEffect(() => {
+    // Check if the browser supports SpeechRecognition
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+      
+      // Set up event handlers
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setPrompt(transcript);
+        setIsListening(false);
+        // Focus on input after speech recognition
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      };
+      
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        showNotification('Speech recognition failed. Please try again.', 'error');
+      };
+      
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+    
+    return () => {
+      // Clean up
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
+      }
+    };
+  }, [showNotification]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,6 +121,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
     showLoading('Processing your request...');
 
     try {
+      // Dispatch event to update chat history with user's prompt
       const promptEvent = new CustomEvent('prompt-submitted', {
         detail: { prompt, response: null }
       });
@@ -82,7 +129,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
 
       clearMarkers();
 
-      const result = await analyzePrompt(prompt);
+      const result = await analyzePrompt(prompt, currentUser?.uid);
       console.log('API response:', result);
 
       let responseText = '';
@@ -156,6 +203,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
         showNotification(responseText, 'error');
       }
 
+      // Dispatch event to update chat history with response
       window.dispatchEvent(new CustomEvent('prompt-submitted', {
         detail: { prompt: null, response: responseText }
       }));
@@ -209,6 +257,35 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
     }, 100);
   };
 
+  const toggleSpeechRecognition = () => {
+    if (!recognitionRef.current) {
+      showNotification('Speech recognition is not supported in your browser', 'error');
+      return;
+    }
+
+    if (isListening) {
+      // Stop listening
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.error("Error stopping speech recognition:", e);
+      }
+      setIsListening(false);
+      showNotification('Voice input stopped', 'info');
+    } else {
+      // Start listening
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        showNotification('Listening... Speak now', 'info');
+      } catch (error) {
+        console.error('Speech recognition error:', error);
+        showNotification('Could not start speech recognition', 'error');
+        setIsListening(false);
+      }
+    }
+  };
+
   return (
     <>
       <div className={`prompt-container ${isFocused ? 'focused' : ''}`} ref={promptRef}>
@@ -222,17 +299,31 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
             value={prompt}
             onChange={(e) => {
               setPrompt(e.target.value);
-              setShowSuggestions(true); // ✅ Reopen suggestions on typing
+              setShowSuggestions(true); // Reopen suggestions on typing
             }}
             onFocus={handleInputFocus}
           />
           {prompt && (
-            <button type="button" className="prompt-clear" onClick={handleClearPrompt} title="Clear input">
+            <button 
+              type="button" 
+              className="prompt-clear" 
+              onClick={handleClearPrompt} 
+              title="Clear input"
+            >
               <X size={16} />
             </button>
           )}
-          <button type="button" className="prompt-voice" title="Voice search"><Mic size={18} /></button>
-          <button type="submit" className="prompt-submit" title="Search"><Send size={16} /></button>
+          <button 
+            type="button" 
+            className={`prompt-voice ${isListening ? 'listening' : ''}`} 
+            onClick={toggleSpeechRecognition} 
+            title={isListening ? "Stop listening" : "Voice search"}
+          >
+            <Mic size={18} />
+          </button>
+          <button type="submit" className="prompt-submit" title="Search">
+            <Send size={16} />
+          </button>
         </form>
     
         {showSuggestions && (
