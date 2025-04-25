@@ -21,7 +21,9 @@ import ee
 from ee_utils import get_tile_url, process_time_series, get_admin_boundary  # Import additional functions
 # Make sure ee_metadata is importable if needed directly, though utils uses it
 # from ee_metadata import extract_metadata # Not directly needed here if ee_utils handles it
-from langchain_ollama import OllamaLLM
+# Removed OllamaLLM import to use Gemma genai client instead
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import google.auth.credentials
 import datetime
@@ -119,6 +121,9 @@ app.add_middleware(
     same_site="lax"
 )
 
+# Static files and templates
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 # Project ID - READ FROM ENVIRONMENT (loaded by load_dotenv)
 # MODIFIED: Critical check if ID is missing
@@ -140,7 +145,9 @@ EE_INITIALIZED = False
 EE_INITIALIZATION_ERROR = None
 LLM_INITIALIZED = False
 LLM_INITIALIZATION_ERROR = None
-llm = None  # Global LLM instance
+llm = None  # (legacy, unused)
+genai_client = None  # Google GenAI client for Gemma
+genai_model_name = None  # Model name for Gemma
 
 # Pydantic Models (no changes needed here)
 class LayerInfo(BaseModel):
@@ -200,6 +207,7 @@ class ApiResponse(BaseModel):
 async def startup_event():
     """Initialize Earth Engine and LLM on startup."""
     global EE_INITIALIZED, EE_INITIALIZATION_ERROR, LLM_INITIALIZED, LLM_INITIALIZATION_ERROR, llm, PROJECT_ID
+    global genai_client, genai_model_name
 
     # Initialize Earth Engine only if PROJECT_ID was successfully loaded
     if PROJECT_ID:
@@ -225,19 +233,18 @@ async def startup_event():
         EE_INITIALIZED = False
         EE_INITIALIZATION_ERROR = "EE_PROJECT_ID not set in environment or .env file"
 
-    # Initialize LLM (no changes here)
+    # Initialize Gemma genai client
     try:
-        ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        llm_model = os.environ.get("OLLAMA_MODEL", "gemma2:2b") # Allow configuring model via env
-        llm = OllamaLLM(model=llm_model, base_url=ollama_base_url)
-        # Test LLM (optional, can slow startup)
-        # await llm.ainvoke("Test prompt")
+        api_key = os.environ.get("GEMINI_API_KEY")
+        logging.info(f"Startup: GEMINI_API_KEY loaded: {bool(api_key)}")
+        genai_client = genai.Client(api_key=api_key)
+        genai_model_name = os.environ.get("GEMINI_MODEL", "gemma-3-4b-it")
         LLM_INITIALIZED = True
-        logging.info(f"LLM initialized successfully (Model: {llm_model}, URL: {ollama_base_url})")
+        logging.info(f"Gemma genai client initialized successfully (Model: {genai_model_name})")
     except Exception as e:
         LLM_INITIALIZED = False
         LLM_INITIALIZATION_ERROR = str(e)
-        logging.error(f"LLM initialization failed: {e}", exc_info=True)
+        logging.error(f"Gemma genai client initialization failed: {e}", exc_info=True)
 
 
 @app.on_event("shutdown")
@@ -728,10 +735,11 @@ async def clear_layers(request: Request):
 # --- analyze_prompt function remains the same ---
 async def analyze_prompt(prompt: str) -> Optional[AnalysisResult]:
     """Analyze user prompt using LLM to extract geographical parameters."""
-    global llm, LLM_INITIALIZED
+    global genai_client, genai_model_name, LLM_INITIALIZED
 
-    if not llm or not LLM_INITIALIZED:
-        logging.error("LLM not initialized, cannot analyze prompt.")
+    # Ensure Gemma client is initialized before analysis
+    if not genai_client or not LLM_INITIALIZED:
+        logging.error(f"Gemma genai client not initialized, cannot analyze prompt. genai_client={genai_client}, LLM_INITIALIZED={LLM_INITIALIZED}")
         return None
 
     # Enhanced prompt for better parsing and coordinate inference
@@ -795,9 +803,24 @@ End Date: [YYYY-MM-DD]
 
     try:
         # Get response from LLM
-        logging.info("Sending prompt analysis request to LLM...")
-        response = await llm.ainvoke(analysis_prompt)
-        logging.info(f"LLM analysis response:\n{response}")
+        logging.info("Sending prompt analysis request to Gemma genai client...")
+        response = ""
+        contents = [
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=analysis_prompt)],
+            ),
+        ]
+        generate_content_config = types.GenerateContentConfig(
+            response_mime_type="text/plain",
+        )
+        for chunk in genai_client.models.generate_content_stream(
+            model=genai_model_name,
+            contents=contents,
+            config=generate_content_config,
+        ):
+            response += chunk.text or ""
+        logging.info("Gemma genai analysis response complete.")
 
         # Parse the response using regex - stricter matching
         data = {}
