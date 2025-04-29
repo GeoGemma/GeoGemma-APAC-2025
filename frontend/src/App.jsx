@@ -8,9 +8,6 @@ import Sidebar from './components/Sidebar/Sidebar';
 import RightSidebar from './components/Sidebar/RightSidebar';
 import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
-import StatusIndicator from './components/UI/StatusIndicator.jsx';
-import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
-import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
 // Import the new ProfileMenu CSS
 import './styles/profileMenu.css';
 import './styles/font.css';
