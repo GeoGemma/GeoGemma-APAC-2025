@@ -82,41 +82,65 @@ export function MapProvider({ children }) {
     fetchUserLayers();
   }, [currentUser, map]);
 
-  const initializeMap = (container) => {
-    if (mapInitializedRef.current) return;
-    
-    const newMap = new maplibregl.Map({
-      container,
-      style: 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json',
-      center: mapState.center,
-      zoom: mapState.zoom,
-      attributionControl: false
-    });
-
-    // Add map controls
-    newMap.addControl(new maplibregl.AttributionControl({ compact: true }));
-    newMap.addControl(new maplibregl.NavigationControl(), 'top-left');
-    newMap.addControl(new maplibregl.FullscreenControl());
-    newMap.addControl(new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true
-    }));
-    newMap.addControl(new maplibregl.ScaleControl());
-
-    newMap.on('load', () => {
-      // Store map position on movement
-      newMap.on('moveend', () => {
-        setMapState(prev => ({
-          ...prev,
-          center: newMap.getCenter().toArray(),
-          zoom: newMap.getZoom()
-        }));
-      });
-    });
-
-    setMap(newMap);
-    mapInitializedRef.current = true;
+// Modified initializeMap function in MapContext.jsx with dark theme
+const initializeMap = (container) => {
+  if (mapInitializedRef.current) return;
+  
+  // Define a dark style directly inline
+  const darkStyle = {
+    version: 8,
+    name: 'Dark',
+    sources: {
+      'raster-tiles': {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }
+    },
+    layers: [
+      {
+        id: 'dark-tiles',
+        type: 'raster',
+        source: 'raster-tiles',
+        minzoom: 0,
+        maxzoom: 22
+      }
+    ]
   };
+  
+  const newMap = new maplibregl.Map({
+    container,
+    style: darkStyle, // Use the dark style defined above
+    center: mapState.center,
+    zoom: mapState.zoom,
+    attributionControl: false
+  });
+
+  // Add map controls
+  newMap.addControl(new maplibregl.AttributionControl({ compact: true }));
+  newMap.addControl(new maplibregl.NavigationControl(), 'top-left');
+  newMap.addControl(new maplibregl.FullscreenControl());
+  newMap.addControl(new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true
+  }));
+  newMap.addControl(new maplibregl.ScaleControl());
+
+  newMap.on('load', () => {
+    // Store map position on movement
+    newMap.on('moveend', () => {
+      setMapState(prev => ({
+        ...prev,
+        center: newMap.getCenter().toArray(),
+        zoom: newMap.getZoom()
+      }));
+    });
+  });
+
+  setMap(newMap);
+  mapInitializedRef.current = true;
+};
 
   const addLayer = async (layerData) => {
     if (!map) {
