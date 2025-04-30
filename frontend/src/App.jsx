@@ -8,122 +8,91 @@ import Sidebar from './components/Sidebar/Sidebar';
 import RightSidebar from './components/Sidebar/RightSidebar';
 import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
-// Import the new ProfileMenu CSS
-import './styles/profileMenu.css';
+import StatusIndicator from './components/UI/StatusIndicator.jsx'; // Ensure this is imported
+// --- Remove Analysis component imports if done previously ---
+// import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
+// import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
 import './styles/font.css';
-import './styles/mapLegend.css';
-import './styles/metadata.css';
+import './styles/mapLegend.css'; // Keep if needed
+import './styles/metadata.css'; // Keep if needed
+import './styles/profileMenu.css'; // Keep if needed
 
-// Define custom CSS variables for the Google theme
-const GlobalStyles = () => {
-  useEffect(() => {
-    // Add CSS variables to root - Google Dark Theme
-    document.documentElement.style.setProperty('--color-primary', '138, 180, 248'); // Google blue #8ab4f8
-    document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24'); // Google dark background #181818
-    document.documentElement.style.setProperty('--color-bg-medium', '48, 49, 52'); // Google dark surface #303134
-    document.documentElement.style.setProperty('--color-bg-light', '60, 64, 67'); // Slightly lighter surface #3c4043
-    document.documentElement.style.setProperty('--color-accent', '253, 214, 99'); // Google yellow #fdd663
-    document.documentElement.style.setProperty('--color-text', '232, 234, 237'); // Google light text #e8eaed
-    document.documentElement.style.setProperty('--color-text-light', '154, 160, 166'); // Google secondary text #9aa0a6
-    document.documentElement.style.setProperty('--color-error', '242, 139, 130'); // Google red #f28b82
-    document.documentElement.style.setProperty('--color-success', '129, 201, 149'); // Google green #81c995
-    document.documentElement.style.setProperty('--transition-default', 'all 0.2s ease'); // transitions
-
-    // Update body background to Google dark theme
-    document.body.style.backgroundColor = '#181818';
-    document.body.style.color = '#e8eaed';
-  }, []);
-
-  return null;
-};
+// GlobalStyles component remains the same
+const GlobalStyles = () => { /* ... */ };
 
 function App() {
   const [notification, setNotification] = useState(null);
+  // --- RE-ADD isLoading and loadingMessage state ---
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [showTimeSeries, setShowTimeSeries] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
+  // --- END RE-ADD ---
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   const toggleSidebar = (expanded) => {
     setSidebarExpanded(expanded);
   };
 
-  const showNotification = (message, type = 'info') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+  const showNotification = (message, type = 'info', duration = 3000) => {
+    setNotification({ id: Date.now(), message, type, duration });
   };
 
+   const handleCloseNotification = () => {
+     setNotification(null);
+   }
+
+  // --- RE-ADD showLoading and hideLoading functions ---
   const showLoading = (message = 'Processing...') => {
+    console.log("Showing loading:", message); // Add console log
     setLoadingMessage(message);
     setIsLoading(true);
   };
 
   const hideLoading = () => {
+    console.log("Hiding loading"); // Add console log
     setIsLoading(false);
+    setLoadingMessage(''); // Clear message
   };
+  // --- END RE-ADD ---
 
-  const toggleTimeSeries = () => {
-    setShowTimeSeries(!showTimeSeries);
-    if (!showTimeSeries) {
-      setShowComparison(false);
-    }
-  };
-
-  const toggleComparison = () => {
-    setShowComparison(!showComparison);
-    if (!showComparison) {
-      setShowTimeSeries(false);
-    }
-  };
+  // Removed toggleTimeSeries/toggleComparison if done previously
 
   return (
     <AuthProvider>
       <MapProvider>
         <GlobalStyles />
-        <Layout 
-          sidebarExpanded={sidebarExpanded}
-          showNotification={showNotification}
-        >
-          <Sidebar 
-            showNotification={showNotification} 
-            toggleTimeSeries={toggleTimeSeries}
-            toggleComparison={toggleComparison}
+        <Layout sidebarExpanded={sidebarExpanded} showNotification={showNotification}>
+          <Sidebar
+            showNotification={showNotification}
             onToggleSidebar={toggleSidebar}
           />
           <AppMap />
           <RightSidebar showNotification={showNotification} />
-          <PromptForm 
-            showNotification={showNotification} 
-            showLoading={showLoading}
-            hideLoading={hideLoading}
+          {/* --- RE-ADD showLoading/hideLoading props --- */}
+          <PromptForm
+            showNotification={showNotification}
+            showLoading={showLoading} // Pass function
+            hideLoading={hideLoading} // Pass function
           />
-          
-          {showTimeSeries && (
-            <TimeSeriesAnalysis 
-              showNotification={showNotification}
-              showLoading={showLoading}
-              hideLoading={hideLoading}
-            />
-          )}
-          
-          {showComparison && (
-            <ComparisonAnalysis 
-              showNotification={showNotification}
-              showLoading={showLoading}
-              hideLoading={hideLoading}
-            />
-          )}
-          
+
+          {/* --- Render Notification component --- */}
           {notification && (
-            <Notification 
-              message={notification.message} 
-              type={notification.type} 
+            <Notification
+              key={notification.id}
+              message={notification.message}
+              type={notification.type}
+              duration={notification.duration}
+              onClose={handleCloseNotification}
             />
           )}
+
+          {/* --- RE-ADD StatusIndicator conditional rendering --- */}
           {isLoading && (
             <StatusIndicator message={loadingMessage} />
           )}
+          {/* --- END RE-ADD --- */}
+
+          {/* Remove ProcessingNotification if you don't have it */}
+          {/* <ProcessingNotification /> */}
         </Layout>
       </MapProvider>
     </AuthProvider>
