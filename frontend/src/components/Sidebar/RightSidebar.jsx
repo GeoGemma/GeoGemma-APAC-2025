@@ -191,7 +191,7 @@ const RightSidebar = ({ showNotification }) => {
               </div>
             )}
             
-            {/* Inspect Panel - Replaced the old Measure panel */}
+            {/* Inspect Panel */}
             {activeSection === 'inspect' && (
               <div className="content-panel">
                 <MapInspector showNotification={showNotification} />

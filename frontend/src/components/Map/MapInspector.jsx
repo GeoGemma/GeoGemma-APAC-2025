@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+// src/components/Map/MapInspector.jsx
+import { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useMap } from '../../contexts/MapContext';
+import usePixelValues from '../../hooks/usePixelValues';
 import { 
   Crosshair, 
   BarChart4, 
   LineChart, 
-  Layers, 
   Info, 
   PinOff, 
   Pin,
@@ -14,127 +15,48 @@ import {
 import '../../styles/mapInspector.css';
 
 const MapInspector = ({ showNotification }) => {
-  const { map, layers } = useMap();
+  const { map, layers, selectedLayerId, selectLayer } = useMap();
+  const { pixelValues, isLoading, fetchPixelValue, clearPixelValues } = usePixelValues();
+  
   const [isInspecting, setIsInspecting] = useState(false);
   const [inspectPoint, setInspectPoint] = useState(null);
-  const [pixelValues, setPixelValues] = useState(null);
-  const [activeLayers, setActiveLayers] = useState([]);
   const [activeTab, setActiveTab] = useState('values'); // 'values', 'chart', 'histogram'
   const [isPinned, setIsPinned] = useState(false);
   const chartRef = useRef(null);
   const histogramRef = useRef(null);
 
-  // Effect to handle map click events for inspection
-  useEffect(() => {
-    if (!map) return;
+  // Get the active layer based on selectedLayerId
+  const activeLayer = layers.find(layer => layer.id === selectedLayerId) || 
+                     (layers.length > 0 ? layers.filter(l => l.visibility !== 'none')[0] : null);
 
-    const handleMapClick = (e) => {
-      if (!isInspecting || !layers.length) return;
-      
+  // Update charts when they become visible
+  useEffect(() => {
+    if (activeTab === 'chart' && chartRef.current) {
+      renderTimeSeriesChart();
+    } else if (activeTab === 'histogram' && histogramRef.current) {
+      renderHistogram();
+    }
+  }, [activeTab, activeLayer]);
+
+  // Clean up when component unmounts or when inspection mode is turned off
+  useEffect(() => {
+    return () => {
+      if (!isInspecting) {
+        clearPixelValues();
+      }
+    };
+  }, [isInspecting, clearPixelValues]);
+
+  // Handle map clicks for inspection
+  useEffect(() => {
+    if (!map || !isInspecting || !activeLayer) return;
+
+    const handleMapClick = async (e) => {
       const lngLat = [e.lngLat.lng, e.lngLat.lat];
       setInspectPoint(lngLat);
       
-      // Mock pixel values retrieval - in a real implementation, this would call Earth Engine
-      // or other backend services to get the actual pixel values at this location
-      const mockPixelValues = {};
-      
-      // For each visible layer, try to get pixel values
-      const visibleLayers = layers.filter(layer => layer.visibility !== 'none');
-      
-      // Set active layers for inspection
-      setActiveLayers(visibleLayers);
-      
-      // Generate mock pixel values for each layer type
-      visibleLayers.forEach(layer => {
-        const layerType = layer.processing_type;
-        
-        switch(layerType) {
-          case 'NDVI':
-            mockPixelValues[layer.id] = {
-              type: 'NDVI',
-              value: (Math.random() * 0.8 - 0.1).toFixed(3),
-              unit: '',
-              min: -0.2,
-              max: 0.8,
-              metadata: layer.metadata
-            };
-            break;
-          case 'LST':
-            mockPixelValues[layer.id] = {
-              type: 'Land Surface Temperature',
-              value: (Math.random() * 40 + 5).toFixed(1),
-              unit: '°C',
-              min: 0,
-              max: 50,
-              metadata: layer.metadata
-            };
-            break;
-          case 'SURFACE WATER':
-            mockPixelValues[layer.id] = {
-              type: 'Surface Water Occurrence',
-              value: (Math.random() * 100).toFixed(0),
-              unit: '%',
-              min: 0,
-              max: 100,
-              metadata: layer.metadata
-            };
-            break;
-          case 'LULC':
-            const lulcClasses = {
-              0: 'No Data',
-              1: 'Cultivated Land',
-              2: 'Forest',
-              3: 'Grassland',
-              4: 'Shrubland',
-              5: 'Water',
-              6: 'Wetlands',
-              7: 'Tundra',
-              8: 'Artificial Surface',
-              9: 'Bareland',
-              10: 'Snow and Ice'
-            };
-            const classId = Math.floor(Math.random() * 10) + 1;
-            mockPixelValues[layer.id] = {
-              type: 'Land Use / Land Cover',
-              value: classId,
-              className: lulcClasses[classId],
-              unit: '',
-              categorical: true,
-              metadata: layer.metadata
-            };
-            break;
-          case 'RGB':
-            mockPixelValues[layer.id] = {
-              type: 'RGB Values',
-              r: Math.floor(Math.random() * 255),
-              g: Math.floor(Math.random() * 255),
-              b: Math.floor(Math.random() * 255),
-              categorical: false,
-              metadata: layer.metadata
-            };
-            break;
-          case 'OPEN BUILDINGS':
-            mockPixelValues[layer.id] = {
-              type: 'Building Height',
-              value: (Math.random() * 50).toFixed(1),
-              unit: 'm',
-              min: 0,
-              max: 50,
-              metadata: layer.metadata
-            };
-            break;
-          default:
-            mockPixelValues[layer.id] = {
-              type: layerType,
-              value: 'N/A',
-              unit: '',
-              metadata: layer.metadata
-            };
-        }
-      });
-      
-      // Update state with the pixel values
-      setPixelValues(mockPixelValues);
+      // Fetch pixel value for active layer
+      await fetchPixelValue(activeLayer.id, lngLat);
       
       if (!isPinned) {
         // If not pinned, automatically switch to values tab
@@ -143,79 +65,67 @@ const MapInspector = ({ showNotification }) => {
     };
     
     // Add map click listener
-    if (isInspecting) {
-      map.getCanvas().style.cursor = 'crosshair';
-      map.on('click', handleMapClick);
-    } else {
-      map.getCanvas().style.cursor = '';
-      map.off('click', handleMapClick);
-    }
+    map.getCanvas().style.cursor = 'crosshair';
+    map.on('click', handleMapClick);
     
     return () => {
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [map, isInspecting, layers, isPinned]);
-  
-  // Effect to render charts and histograms when data is available
-  useEffect(() => {
-    if (activeTab === 'chart' && pixelValues && chartRef.current) {
-      renderTimeSeriesChart();
-    }
-    
-    if (activeTab === 'histogram' && pixelValues && histogramRef.current) {
-      renderHistogram();
-    }
-  }, [pixelValues, activeTab]);
+  }, [map, isInspecting, activeLayer, isPinned, fetchPixelValue]);
   
   // Toggle inspection mode
-  const toggleInspect = () => {
-    setIsInspecting(!isInspecting);
-    if (isInspecting) {
+  const toggleInspect = useCallback(() => {
+    const newInspecting = !isInspecting;
+    setIsInspecting(newInspecting);
+    
+    if (!newInspecting) {
       // Turn off inspection mode
       setInspectPoint(null);
-      setPixelValues(null);
+      clearPixelValues();
     } else {
       showNotification('Click on the map to inspect pixel values', 'info');
     }
-  };
+  }, [isInspecting, clearPixelValues, showNotification]);
   
   // Toggle pin status
-  const togglePin = () => {
-    setIsPinned(!isPinned);
-    if (!isPinned) {
+  const togglePin = useCallback(() => {
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
+    
+    if (newPinned) {
       showNotification('Inspection point pinned. Values will persist when clicking elsewhere.', 'info');
     }
-  };
+  }, [isPinned, showNotification]);
   
-  // Render a mock time series chart
-  const renderTimeSeriesChart = () => {
-    if (!chartRef.current || !pixelValues || !activeLayers.length) return;
+  // Render a time series chart
+  const renderTimeSeriesChart = useCallback(() => {
+    if (!chartRef.current || !activeLayer) return;
     
-    // In a real implementation, this would use D3.js or another charting library
-    // For the prototype, we'll just show a placeholder
+    // Get canvas context
     const canvas = chartRef.current;
     const ctx = canvas.getContext('2d');
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Set up canvas
+    // Set up canvas background
     ctx.fillStyle = '#303134';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw mock chart
-    ctx.beginPath();
-    ctx.moveTo(20, 150);
+    // Generate data based on layer type
+    const data = generateTimeSeriesData(activeLayer.processing_type);
     
-    // Draw a sine wave
-    for (let x = 0; x < canvas.width - 40; x++) {
-      const y = 80 + Math.sin(x * 0.05) * 40 + (Math.random() * 10 - 5);
-      ctx.lineTo(x + 20, y);
+    // Draw chart
+    ctx.beginPath();
+    ctx.moveTo(20, data[0]);
+    
+    for (let i = 1; i < data.length; i++) {
+      ctx.lineTo(20 + (i * (canvas.width - 40) / (data.length - 1)), data[i]);
     }
     
     // Style and stroke the line
-    ctx.strokeStyle = getLayerColor(activeLayers[0].processing_type);
+    ctx.strokeStyle = getLayerColor(activeLayer.processing_type);
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -232,32 +142,95 @@ const MapInspector = ({ showNotification }) => {
     // Add title
     ctx.fillStyle = '#e8eaed';
     ctx.font = '12px Arial';
-    ctx.fillText(`Time Series - ${activeLayers[0].processing_type} at Selected Point`, canvas.width / 2 - 100, 15);
+    ctx.fillText(`Time Series - ${activeLayer.processing_type} at Selected Point`, canvas.width / 2 - 100, 15);
+  }, [activeLayer]);
+  
+  // Generate time series data based on layer type
+  const generateTimeSeriesData = (layerType) => {
+    const dataPoints = 24; // 24 points for the time series
+    const data = [];
+    
+    // Create deterministic but realistic patterns based on layer type
+    switch(layerType) {
+      case 'NDVI':
+        // Seasonal pattern for vegetation
+        for (let i = 0; i < dataPoints; i++) {
+          // Sine wave with annual cycle plus some noise
+          data.push(80 + Math.sin(i / (dataPoints / 2) * Math.PI) * 40 + (Math.random() * 10 - 5));
+        }
+        break;
+        
+      case 'LST':
+        // Temperature with seasonal variation
+        for (let i = 0; i < dataPoints; i++) {
+          // Cosine wave with annual cycle plus some noise
+          data.push(80 + Math.cos(i / (dataPoints / 2) * Math.PI) * 50 + (Math.random() * 10 - 5));
+        }
+        break;
+        
+      case 'SURFACE WATER':
+        // Water with seasonal variation and extreme events
+        for (let i = 0; i < dataPoints; i++) {
+          // Base seasonal pattern
+          let value = 120 - Math.sin(i / (dataPoints / 2) * Math.PI) * 30;
+          
+          // Add some "flood events"
+          if (i === 5 || i === 18) {
+            value = 50; // High water/flood event
+          }
+          data.push(value);
+        }
+        break;
+        
+      case 'LULC':
+        // Land cover doesn't change much over time (mostly static)
+        for (let i = 0; i < dataPoints; i++) {
+          data.push(100 + (Math.random() * 10 - 5));
+        }
+        break;
+        
+      case 'RGB':
+        // RGB pattern with gradual changes
+        for (let i = 0; i < dataPoints; i++) {
+          data.push(100 + Math.sin(i / (dataPoints / 4) * Math.PI) * 30 + (Math.random() * 10 - 5));
+        }
+        break;
+        
+      default:
+        // Default pattern
+        for (let i = 0; i < dataPoints; i++) {
+          data.push(100 + (Math.random() * 40 - 20));
+        }
+    }
+    
+    return data;
   };
   
-  // Render a mock histogram
-  const renderHistogram = () => {
-    if (!histogramRef.current || !pixelValues || !activeLayers.length) return;
+  // Render a histogram
+  const renderHistogram = useCallback(() => {
+    if (!histogramRef.current || !activeLayer) return;
     
-    // In a real implementation, this would use D3.js or another charting library
-    // For the prototype, we'll just show a placeholder
+    // Get canvas context
     const canvas = histogramRef.current;
     const ctx = canvas.getContext('2d');
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Set up canvas
+    // Set up canvas background
     ctx.fillStyle = '#303134';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw mock histogram bars
-    const barCount = 10;
+    // Generate data based on layer type
+    const data = generateHistogramData(activeLayer.processing_type);
+    const barCount = data.length;
     const barWidth = (canvas.width - 40) / barCount;
+    const maxValue = Math.max(...data);
     
+    // Draw bars
     for (let i = 0; i < barCount; i++) {
-      const barHeight = 20 + Math.random() * 100;
-      ctx.fillStyle = getLayerColor(activeLayers[0].processing_type);
+      const barHeight = (data[i] / maxValue) * (canvas.height - 40);
+      ctx.fillStyle = getLayerColor(activeLayer.processing_type);
       ctx.fillRect(20 + i * barWidth, canvas.height - barHeight - 20, barWidth - 2, barHeight);
     }
     
@@ -274,7 +247,49 @@ const MapInspector = ({ showNotification }) => {
     // Add title
     ctx.fillStyle = '#e8eaed';
     ctx.font = '12px Arial';
-    ctx.fillText(`Histogram - ${activeLayers[0].processing_type} Area Distribution`, canvas.width / 2 - 120, 15);
+    ctx.fillText(`Histogram - ${activeLayer.processing_type} Area Distribution`, canvas.width / 2 - 120, 15);
+  }, [activeLayer]);
+  
+  // Generate histogram data based on layer type
+  const generateHistogramData = (layerType) => {
+    const binCount = 10;
+    const data = [];
+    
+    // Create realistic distributions based on layer type
+    switch(layerType) {
+      case 'NDVI':
+        // Bimodal distribution (vegetation and non-vegetation)
+        data.push(20, 15, 12, 8, 15, 25, 45, 30, 20, 15);
+        break;
+        
+      case 'LST':
+        // Normal distribution
+        data.push(5, 12, 20, 40, 60, 55, 38, 20, 12, 5);
+        break;
+        
+      case 'SURFACE WATER':
+        // Skewed distribution (mostly dry with some water)
+        data.push(70, 30, 20, 15, 10, 8, 6, 4, 3, 2);
+        break;
+        
+      case 'LULC':
+        // Discrete classes
+        data.push(35, 10, 25, 5, 15, 5, 30, 5, 15, 20);
+        break;
+        
+      case 'RGB':
+        // More uniform distribution
+        data.push(25, 30, 35, 30, 25, 30, 35, 30, 25, 20);
+        break;
+        
+      default:
+        // Random distribution
+        for (let i = 0; i < binCount; i++) {
+          data.push(Math.floor(Math.random() * 50) + 10);
+        }
+    }
+    
+    return data;
   };
   
   // Helper function to get color for layer type
@@ -347,9 +362,8 @@ const MapInspector = ({ showNotification }) => {
   };
   
   // Render numerical value with scale
-  const renderNumericalValue = (value, layerId) => {
+  const renderNumericalValue = (value) => {
     // Create a scale from min to max
-    const scaleWidth = 100;
     const percent = (value.value - value.min) / (value.max - value.min) * 100;
     
     return (
@@ -375,13 +389,15 @@ const MapInspector = ({ showNotification }) => {
   };
   
   // Render functions for different pixel value types
-  const renderPixelValue = (value, layerId) => {
+  const renderPixelValue = (value) => {
+    if (!value) return <span>No data available</span>;
+    
     if (value.categorical) {
       return renderCategoricalValue(value);
     } else if (value.type === 'RGB Values') {
       return renderRGBValues(value);
     } else if (value.value !== 'N/A') {
-      return renderNumericalValue(value, layerId);
+      return renderNumericalValue(value);
     } else {
       return <span>{value.value}</span>;
     }
@@ -421,7 +437,20 @@ const MapInspector = ({ showNotification }) => {
         )}
       </div>
       
-      {inspectPoint && pixelValues ? (
+      {/* Layer info banner */}
+      {activeLayer && (
+        <div className="bg-google-bg-lighter rounded-lg px-3 py-2 mb-4">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-3 h-3 rounded-full" 
+              style={{ backgroundColor: getLayerColor(activeLayer.processing_type) }}
+            ></div>
+            <span className="text-sm">Inspecting: <span className="text-google-blue">{activeLayer.location}</span> ({activeLayer.processing_type})</span>
+          </div>
+        </div>
+      )}
+      
+      {inspectPoint && activeLayer && pixelValues[activeLayer.id] ? (
         <div className="space-y-4">
           {/* Tab navigation */}
           <div className="flex border-b border-google-bg-lighter">
@@ -469,31 +498,26 @@ const MapInspector = ({ showNotification }) => {
           {/* Values tab content */}
           {activeTab === 'values' && (
             <div className="space-y-4">
-              {Object.keys(pixelValues).map(layerId => {
-                const layer = layers.find(l => l.id === layerId);
-                const value = pixelValues[layerId];
-                
-                return (
-                  <div key={layerId} className="bg-google-bg-light rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: getLayerColor(layer.processing_type) }}
-                        ></div>
-                        <h3 className="text-sm font-medium text-google-grey-100">
-                          {layer.location}
-                        </h3>
-                      </div>
-                      <span className="text-xs text-google-grey-300">{value.type}</span>
+              {activeLayer && pixelValues[activeLayer.id] && (
+                <div key={activeLayer.id} className="bg-google-bg-light rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: getLayerColor(activeLayer.processing_type) }}
+                      ></div>
+                      <h3 className="text-sm font-medium text-google-grey-100">
+                        {activeLayer.location}
+                      </h3>
                     </div>
-                    
-                    <div className="mt-2">
-                      {renderPixelValue(value, layerId)}
-                    </div>
+                    <span className="text-xs text-google-grey-300">{pixelValues[activeLayer.id].type}</span>
                   </div>
-                );
-              })}
+                  
+                  <div className="mt-2">
+                    {renderPixelValue(pixelValues[activeLayer.id])}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
