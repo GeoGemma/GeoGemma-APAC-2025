@@ -11,7 +11,15 @@
 }
 
 .right-sidebar.expanded {
-  width: 300px;
+  width: 380px;
+}
+/* Responsive: shrink sidebar on mobile/tablet */
+@media (max-width: 900px) {
+  .right-sidebar.expanded {
+    width: 100vw;
+    max-width: 300px;
+    min-width: 0;
+  }
 }
 
 .right-sidebar.collapsed {
