@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GEE Dataset Explorer</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <!-- App CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Product+Sans:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/map.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/panels.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/controls.css') }}" />
+  <style>
+    /* Apply Google Sans globally */
+    body, button, input, select, h1, h2, h3, h4, h5, h6, p, a, span, div, 
+    .leaflet-container, .leaflet-control, .leaflet-popup-content {
+      font-family: 'Product Sans', 'Google Sans', 'Roboto', sans-serif !important;
+    }
+  </style>
+  
+</head>
+<body>
+  <!-- Map container -->
+  <div id="map"></div>
+  
+  <!-- Loading indicator -->
+  <div id="loadingIndicator" class="loading-indicator">
+    <h3>Loading Dataset</h3>
+    <p>Please wait while we retrieve and process the data...</p>
+  </div>
+  
+  <!-- Query input box -->
+  <div class="query-box">
+    <input type="text" id="queryInput" placeholder="Enter your dataset query..." />
+    <button id="searchButton">Search</button>
+  </div>
+  
+  <!-- Panel for search results (right side) -->
+  <div id="resultsPanel"></div>
+  
+  <!-- Panel for available bands (left side) -->
+  <div id="leftPanel">
+    <h4>Available Bands</h4>
+    <p>Select a dataset to see band details.</p>
+  </div>
+  
+  <!-- Map Controls -->
+  <div class="map-controls">
+    <button id="darkMapBtn" class="active">Dark Map</button>
+    <button id="lightMapBtn">Light Map</button>
+    <button id="satelliteBtn">Satellite</button>
+  </div>
+  
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  
+  <!-- App JS -->
+  <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/wiki-link-utility.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/wiki-modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dataset.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  
+  <!-- Wiki Help Modal -->
+  <div id="wikiHelpModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2>About Wikipedia Links</h2>
+      <p>This application automatically identifies technical terms related to Earth observation, remote sensing, and geospatial science in dataset descriptions.</p>
+      
+      <p>Terms like <span class="example-link">Landsat</span>, <span class="example-link">NDVI</span>, <span class="example-link">NASA</span>, and many others are linked directly to their Wikipedia articles, allowing you to learn more about these concepts without leaving the application.</p>
+      
+      <h3>How It Works</h3>
+      <ul>
+        <li>Terms related to satellite missions, organizations, remote sensing concepts, and Earth science are automatically detected</li>
+        <li>Click on any highlighted term to open its Wikipedia page in a new tab</li>
+        <li>Hover over a term to see a tooltip indicating it's a Wikipedia link</li>
+      </ul>
+      
+      <h3>Why We Added This</h3>
+      <p>Earth observation and remote sensing datasets often contain specialized terminology that may be unfamiliar to new users. By providing easy access to explanations, we aim to make these datasets more accessible to non-experts and students.</p>
+      
+      <div class="wiki-help-footer">
+        <button id="closeWikiHelp" class="help-btn">Got it</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
