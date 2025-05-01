@@ -1,48 +1,69 @@
 // src/components/Layout/TopBar.jsx
 import PropTypes from 'prop-types';
-import { Settings, HelpCircle, Info } from 'lucide-react';
+// Import LayoutGrid icon (or choose another like Database, Library)
+import { Settings, HelpCircle, Info, LayoutGrid } from 'lucide-react'; // Ensure LayoutGrid is imported
 import ProfileMenu from '../UI/ProfileMenu';
 
 const TopBar = ({ showNotification }) => {
   return (
-    <div className="h-12 w-full bg-background-dark border-b border-background-light/10 flex items-center justify-between px-4 z-20 fixed top-0 left-0 right-0">
+    // Using Tailwind classes directly based on previous examples
+    <div className="h-12 w-full bg-google-bg border-b border-google-bg-light/10 flex items-center justify-between px-4 z-20 fixed top-0 left-0 right-0">
+
       {/* Left side - Logo */}
       <div className="flex items-center">
-        <img 
-          src="/geolong.png" 
-          alt="GeoGemma Logo" 
-          className="w-40 object-contain mr-2"
+        <img
+          src="/geolong.png" // Make sure this path is correct
+          alt="GeoGemma Logo"
+          className="w-40 object-contain mr-2" // Adjust width as needed
         />
-        
       </div>
-      
+
       {/* Right side - Actions */}
-      <div className="flex items-center space-x-1">
-        <button 
-          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-background-light/40 transition-colors"
+      <div className="flex items-center space-x-1"> {/* Adjust space if needed */}
+
+        {/* --- NEW Dataset Explorer Button --- */}
+        <button>
+        <a
+        href="http://127.0.0.1:5000/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-4 py-1.5 bg-google-bg-light/70 text-white font-medium rounded-md hover:bg-google-bg-light/90 transition-colors border border-google-bg-light/30"
+        title="Open Dataset Explorer"
+        style={{ borderRadius: '10px' }}
+      >
+        Dataset Explorer
+      </a>
+        </button>
+        {/* --- END NEW Button --- */}
+
+        {/* Existing Settings Button */}
+        <button
+          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
           onClick={() => showNotification('Settings will be available soon', 'info')}
           title="Settings"
         >
           <Settings size={18} />
         </button>
-        
-        <button 
-          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-background-light/40 transition-colors"
+
+        {/* Existing Help Button */}
+        <button
+          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
           onClick={() => showNotification('Help documentation will be available soon', 'info')}
           title="Help"
         >
           <HelpCircle size={18} />
         </button>
-        
-        <button 
-          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-background-light/40 transition-colors"
+
+        {/* Existing Info Button */}
+        <button
+          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
           onClick={() => showNotification('GeoGemma - A Google Research Project', 'info')}
           title="About"
         >
           <Info size={18} />
         </button>
-        
-        {/* Add ProfileMenu component */}
+
+        {/* Existing ProfileMenu component */}
         <ProfileMenu />
       </div>
     </div>
