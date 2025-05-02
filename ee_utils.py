@@ -267,6 +267,9 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
         elif processing_type == 'SAR':
             logging.info("Calling SAR Imagery function")
             image, vis_params = SAR.add_sar_imagery(geometry, start_date, end_date)
+        elif processing_type == 'FLOOD MAPPING':
+            logging.info(f"Calling SAR Flood Mapping with dates: {start_date} to {end_date}")
+            image, vis_params = SAR.add_sar_flood_map(geometry, start_date, end_date)
         elif processing_type == 'FOREST_LOSS':
             logging.info("Calling add_forest_loss")
             image, vis_params = forest_change.add_forest_loss(geometry)

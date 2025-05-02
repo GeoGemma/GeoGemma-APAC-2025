@@ -758,6 +758,7 @@ Extract the following parameters:
     - Use "FOREST_LOSS" for Forest Loss or Tree loss or Deforestation Year layer.
     - Use "FOREST_GAIN" for Forest Gain or Tree Gain layer.
     - Use "SAR" for RADAR imagery, Cloud free imagery or Synthetic Aperture Radar imagery.
+    - Use "FLOOD MAPPING" specifically for flood detection, flood extent, inundation mapping, especially if SAR or RADAR is mentioned in the context of flooding.
     - If prompt contains “tree cover" use "TREE_COVER".
     - If prompt contains “forest loss" use "FOREST_LOSS".
     - If prompt contains “forest gain" use "FOREST_GAIN".
@@ -860,7 +861,7 @@ End Date: [YYYY-MM-DD]
         longitude_str = None if longitude_str.lower() == 'none' else longitude_str.strip()
 
         # Validate processing type
-        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS','TREE_COVER', 'FOREST_LOSS', 'FOREST_GAIN','SAR']
+        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS','TREE_COVER', 'FOREST_LOSS', 'FOREST_GAIN','SAR', 'FLOOD MAPPING']
         if processing_type not in valid_processing:
              logging.warning(f"LLM returned invalid processing type '{processing_type}', defaulting to RGB.")
              processing_type = 'RGB'
