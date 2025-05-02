@@ -6,7 +6,7 @@ import re
 import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings, forest_change, SAR, climate
+from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings, forest_change, SAR
 import google.auth.credentials
 from functools import lru_cache
 from typing import Dict, Tuple, Optional, List, Union, Any
