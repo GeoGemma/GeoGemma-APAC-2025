@@ -9,17 +9,17 @@ import RightSidebar from './components/Sidebar/RightSidebar';
 import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
-import FloatingDrawingTools from './components/Map/DrawingTools.jsx'; // Import FloatingDrawingTools
+import FloatingDrawingTools from './components/Map/DrawingTools.jsx'; 
 import './styles/font.css';
 import './styles/mapLegend.css';
 import './styles/metadata.css';
 import './styles/profileMenu.css';
-import './styles/drawingTools.css'; // Import the styles for drawing tools
+import './styles/drawingTools.css'; 
 
 // GlobalStyles component remains the same
 const GlobalStyles = () => {
   useEffect(() => {
-    // Add CSS variables to root - Google Dark Theme
+    // CSS variables to root - Google Dark Theme
     document.documentElement.style.setProperty('--color-primary', '138, 180, 248');
     document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24');
     document.documentElement.style.setProperty('--color-bg-medium', '48, 49, 52');
@@ -31,7 +31,7 @@ const GlobalStyles = () => {
     document.documentElement.style.setProperty('--color-success', '129, 201, 149');
     document.documentElement.style.setProperty('--transition-default', 'all 0.2s ease');
 
-    // Update body background to Google dark theme
+    // Body background: Google dark theme
     document.body.style.backgroundColor = '#181818';
     document.body.style.color = '#e8eaed';
   }, []);
@@ -81,7 +81,7 @@ function App() {
           <AppMap />
           <RightSidebar showNotification={showNotification} />
           
-          {/* Add FloatingDrawingTools component */}
+          {/* FloatingDrawingTools component */}
           <FloatingDrawingTools showNotification={showNotification} />
           
           <PromptForm
