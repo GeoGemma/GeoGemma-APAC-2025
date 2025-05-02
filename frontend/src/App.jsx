@@ -8,24 +8,41 @@ import Sidebar from './components/Sidebar/Sidebar';
 import RightSidebar from './components/Sidebar/RightSidebar';
 import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
-import StatusIndicator from './components/UI/StatusIndicator.jsx'; // Ensure this is imported
-// --- Remove Analysis component imports if done previously ---
-// import TimeSeriesAnalysis from './components/Analysis/TimeSeriesAnalysis.jsx';
-// import ComparisonAnalysis from './components/Analysis/ComparisonAnalysis.jsx';
+import StatusIndicator from './components/UI/StatusIndicator.jsx';
+import FloatingDrawingTools from './components/Map/DrawingTools.jsx'; // Import FloatingDrawingTools
 import './styles/font.css';
-import './styles/mapLegend.css'; // Keep if needed
-import './styles/metadata.css'; // Keep if needed
-import './styles/profileMenu.css'; // Keep if needed
+import './styles/mapLegend.css';
+import './styles/metadata.css';
+import './styles/profileMenu.css';
+import './styles/drawingTools.css'; // Import the styles for drawing tools
 
 // GlobalStyles component remains the same
-const GlobalStyles = () => { /* ... */ };
+const GlobalStyles = () => {
+  useEffect(() => {
+    // Add CSS variables to root - Google Dark Theme
+    document.documentElement.style.setProperty('--color-primary', '138, 180, 248');
+    document.documentElement.style.setProperty('--color-bg-dark', '24, 24, 24');
+    document.documentElement.style.setProperty('--color-bg-medium', '48, 49, 52');
+    document.documentElement.style.setProperty('--color-bg-light', '60, 64, 67');
+    document.documentElement.style.setProperty('--color-accent', '253, 214, 99');
+    document.documentElement.style.setProperty('--color-text', '232, 234, 237');
+    document.documentElement.style.setProperty('--color-text-light', '154, 160, 166');
+    document.documentElement.style.setProperty('--color-error', '242, 139, 130');
+    document.documentElement.style.setProperty('--color-success', '129, 201, 149');
+    document.documentElement.style.setProperty('--transition-default', 'all 0.2s ease');
+
+    // Update body background to Google dark theme
+    document.body.style.backgroundColor = '#181818';
+    document.body.style.color = '#e8eaed';
+  }, []);
+
+  return null;
+};
 
 function App() {
   const [notification, setNotification] = useState(null);
-  // --- RE-ADD isLoading and loadingMessage state ---
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  // --- END RE-ADD ---
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   const toggleSidebar = (expanded) => {
@@ -36,25 +53,21 @@ function App() {
     setNotification({ id: Date.now(), message, type, duration });
   };
 
-   const handleCloseNotification = () => {
-     setNotification(null);
-   }
+  const handleCloseNotification = () => {
+    setNotification(null);
+  }
 
-  // --- RE-ADD showLoading and hideLoading functions ---
   const showLoading = (message = 'Processing...') => {
-    console.log("Showing loading:", message); // Add console log
+    console.log("Showing loading:", message);
     setLoadingMessage(message);
     setIsLoading(true);
   };
 
   const hideLoading = () => {
-    console.log("Hiding loading"); // Add console log
+    console.log("Hiding loading");
     setIsLoading(false);
-    setLoadingMessage(''); // Clear message
+    setLoadingMessage('');
   };
-  // --- END RE-ADD ---
-
-  // Removed toggleTimeSeries/toggleComparison if done previously
 
   return (
     <AuthProvider>
@@ -67,14 +80,16 @@ function App() {
           />
           <AppMap />
           <RightSidebar showNotification={showNotification} />
-          {/* --- RE-ADD showLoading/hideLoading props --- */}
+          
+          {/* Add FloatingDrawingTools component */}
+          <FloatingDrawingTools showNotification={showNotification} />
+          
           <PromptForm
             showNotification={showNotification}
-            showLoading={showLoading} // Pass function
-            hideLoading={hideLoading} // Pass function
+            showLoading={showLoading}
+            hideLoading={hideLoading}
           />
 
-          {/* --- Render Notification component --- */}
           {notification && (
             <Notification
               key={notification.id}
@@ -85,14 +100,9 @@ function App() {
             />
           )}
 
-          {/* --- RE-ADD StatusIndicator conditional rendering --- */}
           {isLoading && (
             <StatusIndicator message={loadingMessage} />
           )}
-          {/* --- END RE-ADD --- */}
-
-          {/* Remove ProcessingNotification if you don't have it */}
-          {/* <ProcessingNotification /> */}
         </Layout>
       </MapProvider>
     </AuthProvider>

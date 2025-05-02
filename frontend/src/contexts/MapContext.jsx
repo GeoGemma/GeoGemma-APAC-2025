@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx - Complete updated file with layer focus feature
+// src/contexts/MapContext.jsx - Enhanced with drawing and measurement support
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useAuth } from './AuthContext';
@@ -10,6 +10,7 @@ export function MapProvider({ children }) {
   const [map, setMap] = useState(null);
   const [layers, setLayers] = useState([]);
   const [markers, setMarkers] = useState([]);
+  const [drawnFeatures, setDrawnFeatures] = useState([]); // State for drawn features
   const mapInitializedRef = useRef(false);
   const { currentUser } = useAuth();
   
@@ -82,65 +83,65 @@ export function MapProvider({ children }) {
     fetchUserLayers();
   }, [currentUser, map]);
 
-// Modified initializeMap function in MapContext.jsx with dark theme
-const initializeMap = (container) => {
-  if (mapInitializedRef.current) return;
-  
-  // Define a dark style directly inline
-  const darkStyle = {
-    version: 8,
-    name: 'Dark',
-    sources: {
-      'raster-tiles': {
-        type: 'raster',
-        tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      }
-    },
-    layers: [
-      {
-        id: 'dark-tiles',
-        type: 'raster',
-        source: 'raster-tiles',
-        minzoom: 0,
-        maxzoom: 22
-      }
-    ]
-  };
-  
-  const newMap = new maplibregl.Map({
-    container,
-    style: darkStyle, // Use the dark style defined above
-    center: mapState.center,
-    zoom: mapState.zoom,
-    attributionControl: false
-  });
-
-  // Add map controls
-  newMap.addControl(new maplibregl.AttributionControl({ compact: true }));
-  newMap.addControl(new maplibregl.NavigationControl(), 'top-left');
-  newMap.addControl(new maplibregl.FullscreenControl());
-  newMap.addControl(new maplibregl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-    trackUserLocation: true
-  }));
-  newMap.addControl(new maplibregl.ScaleControl());
-
-  newMap.on('load', () => {
-    // Store map position on movement
-    newMap.on('moveend', () => {
-      setMapState(prev => ({
-        ...prev,
-        center: newMap.getCenter().toArray(),
-        zoom: newMap.getZoom()
-      }));
+  // Initialize map with dark theme
+  const initializeMap = (container) => {
+    if (mapInitializedRef.current) return;
+    
+    // Define a dark style directly inline
+    const darkStyle = {
+      version: 8,
+      name: 'Dark',
+      sources: {
+        'raster-tiles': {
+          type: 'raster',
+          tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }
+      },
+      layers: [
+        {
+          id: 'dark-tiles',
+          type: 'raster',
+          source: 'raster-tiles',
+          minzoom: 0,
+          maxzoom: 22
+        }
+      ]
+    };
+    
+    const newMap = new maplibregl.Map({
+      container,
+      style: darkStyle,
+      center: mapState.center,
+      zoom: mapState.zoom,
+      attributionControl: false
     });
-  });
 
-  setMap(newMap);
-  mapInitializedRef.current = true;
-};
+    // Add map controls
+    newMap.addControl(new maplibregl.AttributionControl({ compact: true }));
+    newMap.addControl(new maplibregl.NavigationControl(), 'top-left');
+    newMap.addControl(new maplibregl.FullscreenControl());
+    newMap.addControl(new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true
+    }));
+    newMap.addControl(new maplibregl.ScaleControl());
+
+    newMap.on('load', () => {
+      // Store map position on movement
+      newMap.on('moveend', () => {
+        setMapState(prev => ({
+          ...prev,
+          center: newMap.getCenter().toArray(),
+          zoom: newMap.getZoom()
+        }));
+      });
+    });
+
+    setMap(newMap);
+    mapInitializedRef.current = true;
+  };
 
   const addLayer = async (layerData) => {
     if (!map) {
@@ -166,11 +167,9 @@ const initializeMap = (container) => {
       if (!map.loaded()) {
         console.log("Map not fully loaded, waiting...");
         map.once('load', () => {
-          // Pass the map instance explicitly
           addLayerToMap(map, layerData, sourceId, layerId, setLayers);
         });
       } else {
-        // Pass the map instance explicitly
         addLayerToMap(map, layerData, sourceId, layerId, setLayers);
       }
       
@@ -194,7 +193,7 @@ const initializeMap = (container) => {
     }
   };
   
-  // Helper function to actually add the layer to the map
+  // Helper function to add layer to the map
   const addLayerToMap = (mapInstance, layerData, sourceId, layerId, setLayersFn) => {
     try {
       console.log(`Adding source: ${sourceId} with URL: ${layerData.tile_url}`);
@@ -363,7 +362,7 @@ const initializeMap = (container) => {
     }
   };
   
-  // Function to reorder layers - Completely rewritten to fix the issue
+  // Function to reorder layers
   const reorderLayers = (newLayerOrder) => {
     if (!map) return;
     
@@ -442,7 +441,6 @@ const initializeMap = (container) => {
     console.log("Layers reordered successfully");
   };
 
-  // NEW FUNCTION: Focus on a specific layer's output area
   // Helper for zoom level based on processing type
   const getAppropriateZoomLevel = (processingType) => {
     switch (processingType) {
@@ -463,7 +461,7 @@ const initializeMap = (container) => {
     }
   };
 
-  // Updated focusOnLayer function as requested
+  // Focus on a specific layer
   const focusOnLayer = (layerId) => {
     if (!map || !layerId) return;
     
@@ -587,6 +585,171 @@ const initializeMap = (container) => {
     }));
   };
 
+  // ---------- DRAWING TOOLS FUNCTIONS ----------
+
+  // Add a drawn feature to the map
+  const addDrawnFeature = (feature) => {
+    if (!map) return;
+    
+    // Generate a unique ID for the feature if it doesn't have one
+    if (!feature.id) {
+      feature.id = `drawn-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    
+    // Add to state
+    setDrawnFeatures(prev => [...prev, feature]);
+    
+    // Render all drawn features
+    renderDrawnFeatures([...drawnFeatures, feature]);
+    
+    return feature.id;
+  };
+  
+  // Update an existing drawn feature
+  const updateDrawnFeature = (featureId, newFeature) => {
+    if (!map || !featureId) return;
+    
+    // Update in state
+    setDrawnFeatures(prev => prev.map(f => 
+      f.id === featureId ? { ...newFeature, id: featureId } : f
+    ));
+    
+    // Re-render all features
+    renderDrawnFeatures(drawnFeatures.map(f => 
+      f.id === featureId ? { ...newFeature, id: featureId } : f
+    ));
+  };
+  
+  // Remove a drawn feature
+  const removeDrawnFeature = (featureId) => {
+    if (!map || !featureId) return;
+    
+    // Remove from state
+    setDrawnFeatures(prev => prev.filter(f => f.id !== featureId));
+    
+    // Re-render remaining features
+    renderDrawnFeatures(drawnFeatures.filter(f => f.id !== featureId));
+  };
+  
+  // Clear all drawn features
+  const clearDrawnFeatures = () => {
+    if (!map) return;
+    
+    // Clear state
+    setDrawnFeatures([]);
+    
+    // Remove all drawing layers
+    if (map.getLayer('drawn-points')) map.removeLayer('drawn-points');
+    if (map.getLayer('drawn-lines')) map.removeLayer('drawn-lines');
+    if (map.getLayer('drawn-polygons-fill')) map.removeLayer('drawn-polygons-fill');
+    if (map.getLayer('drawn-polygons-outline')) map.removeLayer('drawn-polygons-outline');
+    if (map.getSource('drawn-features')) map.removeSource('drawn-features');
+  };
+  
+  // Render all drawn features
+  const renderDrawnFeatures = (features) => {
+    if (!map || !features.length) return;
+    
+    // Remove existing layers
+    if (map.getLayer('drawn-points')) map.removeLayer('drawn-points');
+    if (map.getLayer('drawn-lines')) map.removeLayer('drawn-lines');
+    if (map.getLayer('drawn-polygons-fill')) map.removeLayer('drawn-polygons-fill');
+    if (map.getLayer('drawn-polygons-outline')) map.removeLayer('drawn-polygons-outline');
+    if (map.getSource('drawn-features')) map.removeSource('drawn-features');
+    
+    // Add source for all features
+    map.addSource('drawn-features', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: features
+      }
+    });
+    
+    // Add layers for each geometry type
+    // Point layer
+    map.addLayer({
+      id: 'drawn-points',
+      source: 'drawn-features',
+      type: 'circle',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: {
+        'circle-radius': 6,
+        'circle-color': ['get', 'color'],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+    
+    // Line layer
+    map.addLayer({
+      id: 'drawn-lines',
+      source: 'drawn-features',
+      type: 'line',
+      filter: ['==', ['geometry-type'], 'LineString'],
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 3
+      }
+    });
+    
+    // Polygon fill layer
+    map.addLayer({
+      id: 'drawn-polygons-fill',
+      source: 'drawn-features',
+      type: 'fill',
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: {
+        'fill-color': ['get', 'color'],
+        'fill-opacity': 0.3
+      }
+    });
+    
+    // Polygon outline layer
+    map.addLayer({
+      id: 'drawn-polygons-outline',
+      source: 'drawn-features',
+      type: 'line',
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 2
+      }
+    });
+  };
+  
+  // Get all drawn features
+  const getDrawnFeatures = () => {
+    return drawnFeatures;
+  };
+  
+  // Export drawn features as GeoJSON
+  const exportDrawnFeatures = () => {
+    if (!drawnFeatures.length) return null;
+    
+    return {
+      type: 'FeatureCollection',
+      features: drawnFeatures
+    };
+  };
+  
+  // Import GeoJSON as drawn features
+  const importDrawnFeatures = (geojson) => {
+    if (!map || !geojson || !geojson.features) return;
+    
+    // Add IDs if not present
+    const featuresWithIds = geojson.features.map(f => ({
+      ...f,
+      id: f.id || `imported-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    }));
+    
+    // Set state
+    setDrawnFeatures(featuresWithIds);
+    
+    // Render
+    renderDrawnFeatures(featuresWithIds);
+  };
+
   const value = {
     map,
     initializeMap,
@@ -597,11 +760,21 @@ const initializeMap = (container) => {
     toggleLayerVisibility,
     setLayerOpacity,
     reorderLayers,
-    focusOnLayer, // Added the new function
+    focusOnLayer,
     addMarker,
     clearMarkers,
     flyToLocation,
-    mapState
+    mapState,
+    // Drawing tools functions
+    addDrawnFeature,
+    updateDrawnFeature,
+    removeDrawnFeature,
+    clearDrawnFeatures,
+    renderDrawnFeatures,
+    getDrawnFeatures,
+    exportDrawnFeatures,
+    importDrawnFeatures,
+    drawnFeatures
   };
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
