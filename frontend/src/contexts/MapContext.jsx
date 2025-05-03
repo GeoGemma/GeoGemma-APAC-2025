@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx - Enhanced with drawing and measurement support
+// src/contexts/MapContext.jsx - Enhanced with gas, fire, and drawing support
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useAuth } from './AuthContext';
@@ -193,7 +193,7 @@ export function MapProvider({ children }) {
     }
   };
   
-  // Helper function to add layer to the map
+  // Enhanced addLayerToMap function with better support for gas and fire layers
   const addLayerToMap = (mapInstance, layerData, sourceId, layerId, setLayersFn) => {
     try {
       console.log(`Adding source: ${sourceId} with URL: ${layerData.tile_url}`);
@@ -207,14 +207,37 @@ export function MapProvider({ children }) {
       
       console.log(`Adding layer: ${layerId}`);
       
+      // Determine layer type for special handling
+      const processingType = layerData.processing_type ? layerData.processing_type.toUpperCase() : '';
+      const isGasLayer = ['CO', 'NO2', 'CH4', 'SO2'].includes(processingType) || 
+                        (layerData.metadata && layerData.metadata.gas_type);
+      const isFireLayer = ['ACTIVE_FIRE', 'ACTIVE FIRE', 'BURN_SEVERITY', 'BURN SEVERITY'].includes(processingType) ||
+                         (layerData.metadata && layerData.metadata.SOURCE_DATASET && 
+                          layerData.metadata.SOURCE_DATASET.includes('FIRMS'));
+      
+      // Specialized layer paint properties based on type
+      let paintProps = {
+        'raster-opacity': layerData.opacity || 0.8
+      };
+      
+      // Add special paint properties for fire or gas layers if needed
+      if (isFireLayer) {
+        // Enhance fire visibility
+        paintProps['raster-saturation'] = 0.5; // Increase color saturation
+        paintProps['raster-contrast'] = 0.2;   // Slight increase in contrast
+      } else if (isGasLayer) {
+        // Enhance gas concentration visibility  
+        paintProps['raster-saturation'] = 0.3;
+        paintProps['raster-contrast'] = 0.1;
+        paintProps['raster-brightness-min'] = 0.1; // Help with dark areas
+      }
+      
       // Add the layer
       mapInstance.addLayer({
         'id': layerId,
         'type': 'raster',
         'source': sourceId,
-        'paint': {
-          'raster-opacity': layerData.opacity || 0.8
-        },
+        'paint': paintProps,
         'layout': {
           'visibility': layerData.visibility || 'visible'
         }
@@ -222,12 +245,49 @@ export function MapProvider({ children }) {
       
       console.log(`Layer added successfully: ${layerId}`);
       
+      // Process metadata for specialized layer types
+      let enhancedLayerData = {...layerData};
+      
+      // Normalize gas-specific metadata 
+      if (isGasLayer) {
+        // Extract gas type from processing_type or metadata
+        let gasType = processingType;
+        if (layerData.metadata && layerData.metadata.gas_type) {
+          gasType = layerData.metadata.gas_type.toUpperCase();
+        }
+        
+        // Ensure standard gas information is available
+        if (!enhancedLayerData.metadata) {
+          enhancedLayerData.metadata = {};
+        }
+        
+        // Add gas-specific identifier for legend selection
+        enhancedLayerData.metadata.gas_type = gasType;
+        
+        // Set standard processing_type to help with legend matching
+        if (!['CO', 'NO2', 'CH4', 'SO2'].includes(enhancedLayerData.processing_type)) {
+          enhancedLayerData.processing_type = gasType;
+        }
+      }
+      
+      // Normalize fire-specific metadata
+      if (isFireLayer) {
+        if (!enhancedLayerData.metadata) {
+          enhancedLayerData.metadata = {};
+        }
+        
+        // Standardize processing_type for fire layers
+        if (!['ACTIVE_FIRE', 'ACTIVE FIRE', 'BURN SEVERITY'].includes(enhancedLayerData.processing_type)) {
+          enhancedLayerData.processing_type = 'ACTIVE FIRE';
+        }
+      }
+      
       // Update state with new layer - putting most recent layer at the TOP of the array
       setLayersFn(prev => {
         // Remove any existing layer with same id
-        const filtered = prev.filter(layer => layer.id !== layerData.id);
+        const filtered = prev.filter(layer => layer.id !== enhancedLayerData.id);
         // Add new layer at the beginning of the array (top of the stack)
-        return [layerData, ...filtered];
+        return [enhancedLayerData, ...filtered];
       });
     } catch (error) {
       console.error(`Error adding layer ${layerId} to map:`, error);
@@ -506,6 +566,17 @@ export function MapProvider({ children }) {
         return 10;
       case 'FOREST GAIN':
         return 10;
+      // New types
+      case 'ACTIVE FIRE':
+      case 'ACTIVE_FIRE':
+      case 'BURN SEVERITY':
+      case 'BURN_SEVERITY':
+        return 8; // Fire data typically viewed at regional scale
+      case 'CO':
+      case 'NO2':
+      case 'CH4':
+      case 'SO2':
+        return 7; // Gas concentrations typically viewed at broader scale
       default:
         return 10;
     }

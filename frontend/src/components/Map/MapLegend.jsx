@@ -6,7 +6,9 @@ import {
   Info, 
   ChevronDown, 
   ChevronUp, 
-  BarChart4
+  BarChart4,
+  Flame,      // For fire layers
+  Wind        // For gas/air quality layers
 } from 'lucide-react';
 import MetadataViewer from './MetadataViewer';
 
@@ -116,94 +118,149 @@ const MapLegend = ({ selectedLayer }) => {
         recent: '17-23 (2017-2023)'
       }
     },
-    'FOREST_GAIN': {
-      title: 'Forest Gain',
-      categories: [
-        { color: '#00FF00', label: 'Forest Gain' }
-      ],
-      description: 'Areas of forest gain from Hansen Global Forest Change dataset.',
+    
+    // New layers for atmospheric gases
+    'CO': {
+      title: 'Carbon Monoxide (CO)',
+      gradient: 'linear-gradient(to right, black, blue, purple, cyan, green, yellow, red)',
+      min: '0',
+      max: '0.05',
+      middle: 'Moderate',
+      description: 'Carbon monoxide (CO) concentration in the atmosphere, measured from Sentinel-5P satellite data.',
       stats: {
-        period: '2000-2022',
-        definition: 'Regrowth or new forest'
-      }
+        unit: 'mol/m²',
+        low: '0 to 0.01',
+        moderate: '0.01 to 0.03',
+        high: '0.03 to 0.05+'
+      },
+      icon: <Wind size={16} className="text-google-blue" />
     },
-    'SAR': {
-      title: 'SAR Imagery',
-      description: 'Synthetic Aperture Radar imagery that can see through clouds and darkness.',
-      categories: [
-        { color: '#FFFFFF', label: 'High backscatter' },
-        { color: '#888888', label: 'Medium backscatter' },
-        { color: '#000000', label: 'Low backscatter' }
-      ]
-    },
-    'SAR FLOOD': {
-      title: 'SAR Flood Detection',
-      categories: [
-        { color: '#0000FF', label: 'Detected Water' }
-      ],
-      description: 'Sentinel-1 SAR-based flood detection using Otsu thresholding.'
-    },
-    'TREE COVER': {
-      title: 'Tree Cover Percentage',
-      gradient: 'linear-gradient(to right, #FFFFCC, #C2E699, #78C679, #31A354, #006837)',
-      min: '0%',
-      max: '100%',
-      middle: '50%',
-      description: 'Tree canopy cover percentage, representing the density of trees across the landscape.',
+    'NO2': {
+      title: 'Nitrogen Dioxide (NO2)',
+      gradient: 'linear-gradient(to right, black, blue, purple, cyan, green, yellow, red)',
+      min: '0',
+      max: '0.0002',
+      middle: 'Moderate',
+      description: 'Tropospheric nitrogen dioxide (NO2) concentration, primarily from fossil fuel combustion, measured by Sentinel-5P.',
       stats: {
-        sparse: '0-25% (Light forest)',
-        moderate: '25-60% (Medium density)',
-        dense: '60-100% (Dense forest)'
-      }
+        unit: 'mol/m²',
+        low: '0 to 0.00005',
+        moderate: '0.00005 to 0.0001',
+        high: '0.0001 to 0.0002+'
+      },
+      icon: <Wind size={16} className="text-google-blue" />
     },
-    'TREE_COVER': {
-      title: 'Tree Cover Percentage',
-      gradient: 'linear-gradient(to right, #FFFFCC, #C2E699, #78C679, #31A354, #006837)',
-      min: '0%',
-      max: '100%',
-      middle: '50%',
-      description: 'Tree canopy cover percentage, representing the density of trees across the landscape.',
+    'CH4': {
+      title: 'Methane (CH4)',
+      gradient: 'linear-gradient(to right, black, blue, purple, cyan, green, yellow, red)',
+      min: '1750',
+      max: '1900',
+      middle: '1825',
+      description: 'Atmospheric methane (CH4) concentration, a potent greenhouse gas, measured by Sentinel-5P satellite.',
       stats: {
-        sparse: '0-25% (Light forest)',
-        moderate: '25-60% (Medium density)',
-        dense: '60-100% (Dense forest)'
-      }
+        unit: 'ppb (parts per billion)',
+        background: '1750 to 1800',
+        moderate: '1800 to 1850',
+        high: '1850 to 1900+'
+      },
+      icon: <Wind size={16} className="text-google-blue" />
     },
-    'treecover2000': {
-      title: 'Tree Cover (2000)',
-      gradient: 'linear-gradient(to right, #000000, #00FF00)',
-      min: '0%',
-      max: '100%',
-      middle: '50%',
-      description: 'Tree cover in the year 2000, defined as canopy closure for all vegetation taller than 5m in height.',
+    'SO2': {
+      title: 'Sulfur Dioxide (SO2)',
+      gradient: 'linear-gradient(to right, black, blue, purple, cyan, green, yellow, red)',
+      min: '0',
+      max: '0.0005',
+      middle: 'Moderate',
+      description: 'Sulfur dioxide (SO2) concentration in the atmosphere, often from volcanic activity and industrial processes, measured by Sentinel-5P.',
       stats: {
-        sparse: '0-25% (Light forest)',
-        moderate: '25-60% (Medium density)',
-        dense: '60-100% (Dense forest)'
-      }
+        unit: 'mol/m²',
+        low: '0 to 0.0001',
+        moderate: '0.0001 to 0.0003',
+        high: '0.0003 to 0.0005+'
+      },
+      icon: <Wind size={16} className="text-google-blue" />
     },
-    'lossyear': {
-      title: 'Forest Loss Year',
-      gradient: 'linear-gradient(to right, #ffff00, #ffaa00, #ff5500, #ff0000)',
-      min: '1 (2001)',
-      max: '23 (2023)',
-      middle: '12 (2012)',
-      description: 'Year of forest loss detection, from 2001 to 2023. Forest loss is defined as a stand-replacement disturbance or change from forest to non-forest state.',
+    
+    // Active fire layers
+    'ACTIVE_FIRE': {
+      title: 'Active Fire Intensity',
+      gradient: 'linear-gradient(to right, red, orange, yellow)',
+      min: '325 K',
+      max: '400 K',
+      middle: '360 K',
+      description: 'FIRMS active fire detection based on thermal anomalies. Higher values indicate more intense fires.',
       stats: {
-        early: '1-8 (2001-2008)',
-        mid: '9-16 (2009-2016)',
-        recent: '17-23 (2017-2023)'
-      }
+        unit: 'Kelvin (brightness temperature)',
+        potential: '325 to 340',
+        active: '340 to 370',
+        intense: '370 to 400+'
+      },
+      icon: <Flame size={16} className="text-google-red" />
+    },
+    'ACTIVE FIRE': {
+      title: 'Active Fire Intensity',
+      gradient: 'linear-gradient(to right, red, orange, yellow)',
+      min: '325 K',
+      max: '400 K',
+      middle: '360 K',
+      description: 'FIRMS active fire detection based on thermal anomalies. Higher values indicate more intense fires.',
+      stats: {
+        unit: 'Kelvin (brightness temperature)',
+        potential: '325 to 340',
+        active: '340 to 370',
+        intense: '370 to 400+'
+      },
+      icon: <Flame size={16} className="text-google-red" />
+    },
+    'BURN SEVERITY': {
+      title: 'Active Fire Intensity',
+      gradient: 'linear-gradient(to right, red, orange, yellow)',
+      min: '325 K',
+      max: '400 K',
+      middle: '360 K',
+      description: 'FIRMS active fire detection based on thermal anomalies. Higher values indicate more intense fires.',
+      stats: {
+        unit: 'Kelvin (brightness temperature)',
+        potential: '325 to 340',
+        active: '340 to 370',
+        intense: '370 to 400+'
+      },
+      icon: <Flame size={16} className="text-google-red" />
     }
   };
 
   // Use the selected layer if provided, otherwise determine based on top visible layer
   useEffect(() => {
     if (selectedLayer) {
-      const config = legendConfigs[selectedLayer.processing_type] || {
-        title: selectedLayer.processing_type,
-        description: `${selectedLayer.processing_type} data for ${selectedLayer.location}.`
-      };
+      // First try with the exact processing_type
+      let config = legendConfigs[selectedLayer.processing_type];
+      
+      // If not found, try with a case-insensitive match
+      if (!config) {
+        const processingType = selectedLayer.processing_type.toUpperCase();
+        const matchingKey = Object.keys(legendConfigs).find(
+          key => key.toUpperCase() === processingType
+        );
+        if (matchingKey) {
+          config = legendConfigs[matchingKey];
+        }
+      }
+      
+      // If still not found, check for special gas cases
+      if (!config && selectedLayer.metadata && selectedLayer.metadata.gas_type) {
+        const gasType = selectedLayer.metadata.gas_type.toUpperCase();
+        if (legendConfigs[gasType]) {
+          config = legendConfigs[gasType];
+        }
+      }
+      
+      // If not found, create a minimal fallback
+      if (!config) {
+        config = {
+          title: selectedLayer.processing_type,
+          description: `${selectedLayer.processing_type} data for ${selectedLayer.location}.`
+        };
+      }
       
       setActiveLayer({
         ...selectedLayer,
@@ -229,14 +286,43 @@ const MapLegend = ({ selectedLayer }) => {
     const topLayer = visibleLayers[0]; 
     const layerType = topLayer.processing_type;
     
-    // Set the active layer configuration
-    if (legendConfigs[layerType]) {
+    // Check for matching config - first with exact match
+    let layerConfig = legendConfigs[layerType];
+    
+    // If not found, try with a case-insensitive match
+    if (!layerConfig) {
+      const upperLayerType = layerType.toUpperCase();
+      const matchingKey = Object.keys(legendConfigs).find(
+        key => key.toUpperCase() === upperLayerType
+      );
+      if (matchingKey) {
+        layerConfig = legendConfigs[matchingKey];
+      }
+    }
+    
+    // Check for special gas metadata
+    if (!layerConfig && topLayer.metadata && topLayer.metadata.gas_type) {
+      const gasType = topLayer.metadata.gas_type.toUpperCase();
+      if (legendConfigs[gasType]) {
+        layerConfig = legendConfigs[gasType];
+      }
+    }
+    
+    // Set the active layer configuration or use a default
+    if (layerConfig) {
       setActiveLayer({
         ...topLayer,
-        config: legendConfigs[layerType]
+        config: layerConfig
       });
     } else {
-      setActiveLayer(null);
+      // Create a minimal fallback config
+      setActiveLayer({
+        ...topLayer,
+        config: {
+          title: layerType,
+          description: `${layerType} data for ${topLayer.location}.`
+        }
+      });
     }
   }, [layers, selectedLayer]);
 
@@ -262,9 +348,14 @@ const MapLegend = ({ selectedLayer }) => {
   return (
     <div className="p-4">
       {/* Layer info header */}
-      <div className="mb-4">
-        <h3 className="text-google-blue text-lg font-medium mb-1">{activeLayer.config?.title || activeLayer.processing_type}</h3>
-        <p className="text-google-grey-100 text-sm">{activeLayer.location}</p>
+      <div className="mb-4 flex items-start gap-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            {activeLayer.config.icon}
+            <h3 className="text-google-blue text-lg font-medium mb-1">{activeLayer.config?.title || activeLayer.processing_type}</h3>
+          </div>
+          <p className="text-google-grey-100 text-sm">{activeLayer.location}</p>
+        </div>
       </div>
 
       {/* Legend visualization section with toggle */}
