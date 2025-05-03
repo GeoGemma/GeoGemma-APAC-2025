@@ -362,6 +362,50 @@ export function MapProvider({ children }) {
     }
   };
   
+  // Filter layer data by range
+  const filterLayerByRange = (layerId, min, max, enabled) => {
+    if (!map) return;
+    
+    const layerIndex = layers.findIndex(layer => layer.id === layerId);
+    if (layerIndex === -1) return;
+    
+    const mapLayerId = `ee-layer-${layerId}`;
+    
+    if (map.getLayer(mapLayerId)) {
+      console.log(`Filtering ${layerId} to range: ${min}-${max}, enabled: ${enabled}`);
+      
+      // Store filter info on the layer for future reference
+      const updatedLayers = [...layers];
+      updatedLayers[layerIndex] = {
+        ...updatedLayers[layerIndex],
+        filter: { min, max, enabled }
+      };
+      
+      // Apply a visual indicator for filtering 
+      if (enabled) {
+        // Apply visual effects to indicate filtering is active
+        // This is just a visual indicator until actual raster filtering is implemented
+        map.setPaintProperty(mapLayerId, 'raster-saturation', -0.2);
+        map.setPaintProperty(mapLayerId, 'raster-contrast', 0.2);
+      } else {
+        // Reset when filter is disabled
+        map.setPaintProperty(mapLayerId, 'raster-saturation', 0);
+        map.setPaintProperty(mapLayerId, 'raster-contrast', 0);
+      }
+      
+      setLayers(updatedLayers);
+      
+      // Update in Firestore if user is authenticated
+      if (currentUser && currentUser.uid) {
+        try {
+          saveMapLayer(currentUser.uid, layerId, updatedLayers[layerIndex]);
+        } catch (error) {
+          console.error('Error updating layer filter in Firestore:', error);
+        }
+      }
+    }
+  };
+  
   // Function to reorder layers
   const reorderLayers = (newLayerOrder) => {
     if (!map) return;
@@ -456,6 +500,12 @@ export function MapProvider({ children }) {
         return 9;
       case 'OPEN BUILDINGS':
         return 14;
+      case 'SAR FLOOD':
+        return 10;
+      case 'FOREST LOSS':
+        return 10;
+      case 'FOREST GAIN':
+        return 10;
       default:
         return 10;
     }
@@ -759,6 +809,7 @@ export function MapProvider({ children }) {
     clearLayers,
     toggleLayerVisibility,
     setLayerOpacity,
+    filterLayerByRange, // Added function for layer filtering
     reorderLayers,
     focusOnLayer,
     addMarker,
