@@ -1,7 +1,4 @@
-// src/components/Map/FloatingDrawingTools.jsx
-import { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
-import { useMap } from '../../contexts/MapContext';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Pencil, 
   Square, 
@@ -14,48 +11,62 @@ import {
   Pointer,
   Save,
   Download,
-  PencilRuler
+  ChevronRight,
+  ChevronLeft,
+  PencilRuler,
+  MousePointer,
+  Move,
+  Info
 } from 'lucide-react';
-import '../../styles/drawingTools.css';
+import { useMap } from '../../contexts/MapContext';
 import * as turf from '@turf/turf';
 
 const DrawingTools = ({ showNotification }) => {
-  const { map } = useMap();
+  // States
+  const [isExpanded, setIsExpanded] = useState(false);
   const [activeMode, setActiveMode] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentFeatures, setCurrentFeatures] = useState([]);
   const [drawHistory, setDrawHistory] = useState([]);
   const [measurementInfo, setMeasurementInfo] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('draw'); // 'draw', 'measure', 'edit'
+  const [animatingButton, setAnimatingButton] = useState(null);
+  const [tooltipText, setTooltipText] = useState('');
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [instructionText, setInstructionText] = useState('');
   
-  // Refs to store current drawing state
+  // Refs
+  const { map } = useMap();
   const pointsRef = useRef([]);
   const currentFeatureRef = useRef(null);
   const currentSourceRef = useRef(null);
   const currentLayerRef = useRef(null);
   const popupRef = useRef(null);
+  const toolbarRef = useRef(null);
 
   // Draw mode constants
   const DRAW_MODES = {
+    SELECT: 'select',
     POINT: 'point',
     LINE: 'line',
     POLYGON: 'polygon',
     RECTANGLE: 'rectangle',
     CIRCLE: 'circle',
     MEASURE: 'measure',
-    SELECT: 'select'
   };
 
-  // Colors for drawing features
+  // Colors for drawing features - using Google palette
   const COLORS = {
-    POINT: '#FF5733',
-    LINE: '#33A1FF',
-    POLYGON: '#33FF57',
-    RECTANGLE: '#FF33E9',
-    CIRCLE: '#FFCE33',
-    MEASURE: '#33FFCE'
+    POINT: '#8ab4f8', // Google blue
+    LINE: '#8ab4f8', // Google blue
+    POLYGON: '#81c995', // Google green
+    RECTANGLE: '#c58af9', // Purple
+    CIRCLE: '#fdd663', // Google yellow
+    MEASURE: '#f28b82' // Google red
   };
 
+  // Initial setup
   useEffect(() => {
     if (!map) return;
 
@@ -65,7 +76,7 @@ const DrawingTools = ({ showNotification }) => {
     };
   }, [map]);
 
-  // Effect for handling active draw mode
+  // Handle active draw mode
   useEffect(() => {
     if (!map) return;
 
@@ -74,12 +85,16 @@ const DrawingTools = ({ showNotification }) => {
       map.getCanvas().style.cursor = 
         activeMode === DRAW_MODES.SELECT ? 'pointer' : 'crosshair';
       
+      // Set instruction text based on mode
+      updateInstructionText(activeMode);
+      
       // Add map event listeners for the active mode
       setupEventListeners();
     } else {
       // Reset cursor and remove event listeners
       map.getCanvas().style.cursor = '';
       removeEventListeners();
+      setInstructionText('');
     }
 
     return () => {
@@ -87,6 +102,35 @@ const DrawingTools = ({ showNotification }) => {
       removeEventListeners();
     };
   }, [activeMode, map]);
+
+  // Update instruction text based on active mode
+  const updateInstructionText = (mode) => {
+    switch (mode) {
+      case DRAW_MODES.POINT:
+        setInstructionText('Click on the map to place a point');
+        break;
+      case DRAW_MODES.LINE:
+        setInstructionText('Click to add line points. Double-click to finish');
+        break;
+      case DRAW_MODES.POLYGON:
+        setInstructionText('Click to add polygon vertices. Double-click to close');
+        break;
+      case DRAW_MODES.RECTANGLE:
+        setInstructionText('Click and drag to draw a rectangle');
+        break;
+      case DRAW_MODES.CIRCLE:
+        setInstructionText('Click and drag to set circle radius');
+        break;
+      case DRAW_MODES.MEASURE:
+        setInstructionText('Click to start measuring. Double-click to finish');
+        break;
+      case DRAW_MODES.SELECT:
+        setInstructionText('Click on a feature to select it');
+        break;
+      default:
+        setInstructionText('');
+    }
+  };
 
   // Set up event listeners based on active mode
   const setupEventListeners = () => {
@@ -214,8 +258,8 @@ const DrawingTools = ({ showNotification }) => {
 
   // Handle mouse movement for line/polygon/measure tools to show preview
   const handleMouseMove = (e) => {
-    if (!isDrawing && pointsRef.current.length > 0) {
-      // Create a preview line/polygon that follows the cursor
+    if (pointsRef.current.length > 0) {
+        // Create a preview line/polygon that follows the cursor
       const coordinates = [...pointsRef.current, [e.lngLat.lng, e.lngLat.lat]];
       let geometryType = 'LineString';
       let finalCoords = coordinates;
@@ -737,6 +781,12 @@ const DrawingTools = ({ showNotification }) => {
     }
     
     showNotification('All features cleared', 'success');
+    
+    // Button animation
+    setAnimatingButton('clear');
+    setTimeout(() => {
+      setAnimatingButton(null);
+    }, 300);
   };
 
   // Undo last action
@@ -755,6 +805,12 @@ const DrawingTools = ({ showNotification }) => {
     renderFeatures(newHistory);
     
     showNotification('Last action undone', 'success');
+    
+    // Button animation
+    setAnimatingButton('undo');
+    setTimeout(() => {
+      setAnimatingButton(null);
+    }, 300);
   };
 
   // Cancel current drawing
@@ -765,6 +821,12 @@ const DrawingTools = ({ showNotification }) => {
     cleanupTemporaryFeature();
     
     showNotification('Drawing cancelled', 'info');
+    
+    // Button animation
+    setAnimatingButton('cancel');
+    setTimeout(() => {
+      setAnimatingButton(null);
+    }, 300);
   };
 
   // Export features as GeoJSON
@@ -791,6 +853,12 @@ const DrawingTools = ({ showNotification }) => {
     document.body.removeChild(link);
     
     showNotification('Features exported as GeoJSON', 'success');
+    
+    // Button animation
+    setAnimatingButton('export');
+    setTimeout(() => {
+      setAnimatingButton(null);
+    }, 300);
   };
 
   // Clean up all drawing resources
@@ -836,119 +904,308 @@ const DrawingTools = ({ showNotification }) => {
   // Toggle the expanded state of the toolbar
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
+    
+    // Reset the active category when collapsing
+    if (isExpanded) {
+      setActiveCategory('draw');
+    }
+  };
+  
+  // Handle tooltip for buttons
+  const handleMouseEnter = (text, e) => {
+    if (!toolbarRef.current) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const toolbarRect = toolbarRef.current.getBoundingClientRect();
+    
+    // Position tooltip above the button
+    setTooltipPosition({
+      x: rect.left + rect.width / 2 - toolbarRect.left,
+      y: rect.top - toolbarRect.top - 5
+    });
+    
+    setTooltipText(text);
+    setShowTooltip(true);
+  };
+  
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+  
+  // Get button style based on state
+  const getButtonStyle = (buttonType, buttonMode = null) => {
+    const isActive = buttonMode ? activeMode === buttonMode : false;
+    const isAnimating = animatingButton === buttonType;
+    
+    let baseStyle = "w-10 h-10 flex items-center justify-center rounded-md transition-all";
+    
+    // Base appearance
+    if (isActive) {
+      baseStyle += " bg-google-blue/20 text-google-blue";
+    } else {
+      baseStyle += " bg-google-bg-light hover:bg-google-bg-lighter text-google-grey-200 hover:text-google-grey-100";
+    }
+    
+    // Animation
+    if (isAnimating) {
+      baseStyle += " animate-pulse";
+    }
+    
+    return baseStyle;
+  };
+  
+  // Render the toolbar with categories
+  const renderToolbar = () => {
+    return (
+      <div 
+        className="bg-google-bg border border-google-bg-lighter rounded-lg p-3 shadow-lg"
+        ref={toolbarRef}
+      >
+        {/* Category tabs */}
+        <div className="flex mb-3 bg-google-bg-lighter rounded-md p-1">
+          <button
+            className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md transition-all
+                      ${activeCategory === 'draw' ? 'bg-google-blue/10 text-google-blue' : 'text-google-grey-200 hover:text-google-grey-100'}`}
+            onClick={() => setActiveCategory('draw')}
+          >
+            Draw
+          </button>
+          <button
+            className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md transition-all
+                      ${activeCategory === 'measure' ? 'bg-google-blue/10 text-google-blue' : 'text-google-grey-200 hover:text-google-grey-100'}`}
+            onClick={() => setActiveCategory('measure')}
+          >
+            Measure
+          </button>
+          <button
+            className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md transition-all
+                      ${activeCategory === 'edit' ? 'bg-google-blue/10 text-google-blue' : 'text-google-grey-200 hover:text-google-grey-100'}`}
+            onClick={() => setActiveCategory('edit')}
+          >
+            Edit
+          </button>
+        </div>
+        
+        {/* Draw category */}
+        {activeCategory === 'draw' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                className={getButtonStyle('point', DRAW_MODES.POINT)}
+                onClick={() => setMode(DRAW_MODES.POINT)}
+                onMouseEnter={(e) => handleMouseEnter('Add Point', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Add Point"
+              >
+                <Pencil size={18} />
+              </button>
+              <button
+                className={getButtonStyle('line', DRAW_MODES.LINE)}
+                onClick={() => setMode(DRAW_MODES.LINE)}
+                onMouseEnter={(e) => handleMouseEnter('Draw Line', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Draw Line"
+              >
+                <Ruler size={18} />
+              </button>
+              <button
+                className={getButtonStyle('polygon', DRAW_MODES.POLYGON)}
+                onClick={() => setMode(DRAW_MODES.POLYGON)}
+                onMouseEnter={(e) => handleMouseEnter('Draw Polygon', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Draw Polygon"
+              >
+                <Hexagon size={18} />
+              </button>
+              <button
+                className={getButtonStyle('rectangle', DRAW_MODES.RECTANGLE)}
+                onClick={() => setMode(DRAW_MODES.RECTANGLE)}
+                onMouseEnter={(e) => handleMouseEnter('Draw Rectangle', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Draw Rectangle"
+              >
+                <Square size={18} />
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                className={getButtonStyle('circle', DRAW_MODES.CIRCLE)}
+                onClick={() => setMode(DRAW_MODES.CIRCLE)}
+                onMouseEnter={(e) => handleMouseEnter('Draw Circle', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Draw Circle"
+              >
+                <Circle size={18} />
+              </button>
+              <button
+                className={getButtonStyle('select', DRAW_MODES.SELECT)}
+                onClick={() => setMode(DRAW_MODES.SELECT)}
+                onMouseEnter={(e) => handleMouseEnter('Select Features', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Select Features"
+              >
+                <MousePointer size={18} />
+              </button>
+              <button
+                className={getButtonStyle('cancel')}
+                onClick={handleCancel}
+                disabled={!isDrawing && pointsRef.current.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Cancel Drawing', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Cancel Drawing"
+              >
+                <RotateCcw size={18} />
+              </button>
+              <button
+                className={getButtonStyle('undo')}
+                onClick={handleUndo}
+                disabled={drawHistory.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Undo Last Action', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Undo Last Action"
+              >
+                <Undo2 size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Measure category */}
+        {activeCategory === 'measure' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                className={getButtonStyle('measure', DRAW_MODES.MEASURE)}
+                onClick={() => setMode(DRAW_MODES.MEASURE)}
+                onMouseEnter={(e) => handleMouseEnter('Measure Distance', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Measure Distance"
+              >
+                <Ruler size={18} />
+              </button>
+              <button
+                className={getButtonStyle('cancel')}
+                onClick={handleCancel}
+                disabled={!isDrawing && pointsRef.current.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Cancel Measurement', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Cancel Measurement"
+              >
+                <RotateCcw size={18} />
+              </button>
+              <button
+                className={getButtonStyle('clear')}
+                onClick={handleClearAll}
+                disabled={currentFeatures.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Clear All Measurements', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Clear All Measurements"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Edit category */}
+        {activeCategory === 'edit' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                className={getButtonStyle('clear')}
+                onClick={handleClearAll}
+                disabled={currentFeatures.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Clear All', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Clear All"
+              >
+                <Trash2 size={18} />
+              </button>
+              <button
+                className={getButtonStyle('export')}
+                onClick={handleExport}
+                disabled={currentFeatures.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Export as GeoJSON', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Export as GeoJSON"
+              >
+                <Download size={18} />
+              </button>
+              <button
+                className={getButtonStyle('info')}
+                onClick={() => showNotification('Feature count: ' + currentFeatures.length, 'info')}
+                disabled={currentFeatures.length === 0}
+                onMouseEnter={(e) => handleMouseEnter('Feature Info', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Feature Info"
+              >
+                <Info size={18} />
+              </button>
+              <button
+                className={getButtonStyle('move')}
+                disabled={true}
+                onMouseEnter={(e) => handleMouseEnter('Move Features (Coming Soon)', e)}
+                onMouseLeave={handleMouseLeave}
+                title="Move Features (Coming Soon)"
+              >
+                <Move size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Tooltip */}
+        {showTooltip && (
+          <div 
+            className="absolute bg-google-bg-light text-google-grey-100 py-1 px-2 text-xs rounded shadow-md pointer-events-none z-10 transform -translate-y-full -translate-x-1/2 whitespace-nowrap"
+            style={{ 
+              left: `${tooltipPosition.x}px`, 
+              top: `${tooltipPosition.y}px`
+            }}
+          >
+            {tooltipText}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className={`floating-drawing-tools ${isExpanded ? 'expanded' : 'collapsed'}`}>
-      {/* Main toggle button */}
-      <button 
-        className="floating-tools-toggle"
-        onClick={toggleExpanded}
-        title={isExpanded ? "Collapse drawing tools" : "Expand drawing tools"}
-      >
-        <PencilRuler size={18} />
-      </button>
-      
-      {/* Tools panel - visible when expanded */}
-      {isExpanded && (
-        <div className="floating-tools-panel">
-          <div className="floating-tools-row">
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.POINT ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.POINT)}
-              title="Draw Point"
-            >
-              <Pencil size={16} />
-            </button>
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.LINE ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.LINE)}
-              title="Draw Line"
-            >
-              <Ruler size={16} />
-            </button>
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.POLYGON ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.POLYGON)}
-              title="Draw Polygon"
-            >
-              <Hexagon size={16} />
-            </button>
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.RECTANGLE ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.RECTANGLE)}
-              title="Draw Rectangle"
-            >
-              <Square size={16} />
-            </button>
+    <div className="fixed bottom-8 left-80 z-50">
+      <div className="relative">
+        {/* Main toggle button - always visible */}
+        <button 
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all
+                    ${isExpanded ? 'bg-google-blue text-white rotate-45' : 'bg-google-bg text-google-blue hover:bg-google-bg-light'}`}
+          onClick={toggleExpanded}
+          aria-label={isExpanded ? "Close drawing tools" : "Open drawing tools"}
+        >
+          <PencilRuler size={20} />
+        </button>
+        
+        {/* Expanded panel */}
+        {isExpanded && (
+          <div className="absolute bottom-14 left-0 animate-scale-in">
+            {renderToolbar()}
           </div>
-          
-          <div className="floating-tools-row">
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.CIRCLE ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.CIRCLE)}
-              title="Draw Circle"
-            >
-              <Circle size={16} />
-            </button>
-            <button
-              className={`floating-tool-btn ${activeMode === DRAW_MODES.MEASURE ? 'active' : ''}`}
-              onClick={() => setMode(DRAW_MODES.MEASURE)}
-              title="Measure Distance"
-            >
-              <Ruler size={16} />
-            </button>
-            <button
-              className="floating-tool-btn"
-              onClick={handleUndo}
-              title="Undo Last Action"
-              disabled={drawHistory.length === 0}
-            >
-              <Undo2 size={16} />
-            </button>
-          </div>
-          
-          <div className="floating-tools-row">
-            <button
-              className="floating-tool-btn"
-              onClick={handleClearAll}
-              title="Clear All Features"
-              disabled={currentFeatures.length === 0}
-            >
-              <Trash2 size={16} />
-            </button>
-            <button
-              className="floating-tool-btn"
-              onClick={handleCancel}
-              title="Cancel Current Drawing"
-              disabled={!isDrawing && pointsRef.current.length === 0}
-            >
-              <RotateCcw size={16} />
-            </button>
-            <button
-              className="floating-tool-btn"
-              onClick={handleExport}
-              title="Export as GeoJSON"
-              disabled={currentFeatures.length === 0}
-            >
-              <Download size={16} />
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
       
       {/* Measurement info popup */}
       {measurementInfo && (
-        <div className="measurement-popup">
-          <span>{measurementInfo.distance.toFixed(2)} km</span>
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-8 bg-google-bg-light text-google-grey-100 px-3 py-2 rounded-lg shadow-lg text-sm z-50">
+          <span className="font-medium">{measurementInfo.distance.toFixed(2)} km</span>
+        </div>
+      )}
+      
+      {/* Drawing instruction */}
+      {instructionText && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-google-bg-light/90 text-google-grey-100 px-4 py-2 rounded-lg shadow-lg text-sm z-50 max-w-sm text-center">
+          {instructionText}
         </div>
       )}
     </div>
   );
-};
-
-DrawingTools.propTypes = {
-  showNotification: PropTypes.func.isRequired
 };
 
 export default DrawingTools;
