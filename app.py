@@ -759,6 +759,11 @@ Extract the following parameters:
     - Use "FOREST_GAIN" for Forest Gain or Tree Gain layer.
     - Use "SAR" for RADAR imagery, Cloud free imagery or Synthetic Aperture Radar imagery.
     - Use "FLOOD MAPPING" specifically for flood detection, flood extent, inundation mapping, especially if SAR or RADAR is mentioned in the context of flooding.
+    - Use "ACTIVE_FIRE" for visualizing recent fire activity, active fire detection, thermal hotspots, wildfire intensity (typically uses FIRMS data)
+    - Use "CO" for Carbon Monoxide concentration.
+    - Use "NO2" for Nitrogen Dioxide concentration.
+    - Use "CH4" for Methane concentration.
+    - Use "SO2" for Sulfur Dioxide concentration.
     - If prompt contains “tree cover" use "TREE_COVER".
     - If prompt contains “forest loss" use "FOREST_LOSS".
     - If prompt contains “forest gain" use "FOREST_GAIN".
@@ -861,7 +866,7 @@ End Date: [YYYY-MM-DD]
         longitude_str = None if longitude_str.lower() == 'none' else longitude_str.strip()
 
         # Validate processing type
-        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS','TREE_COVER', 'FOREST_LOSS', 'FOREST_GAIN','SAR', 'FLOOD MAPPING']
+        valid_processing = ['RGB', 'NDVI', 'SURFACE WATER', 'LULC', 'LST', 'OPEN BUILDINGS','TREE_COVER', 'FOREST_LOSS', 'FOREST_GAIN','SAR', 'FLOOD MAPPING', 'ACTIVE_FIRE', 'CO', 'NO2', 'CH4', 'SO2']
         if processing_type not in valid_processing:
              logging.warning(f"LLM returned invalid processing type '{processing_type}', defaulting to RGB.")
              processing_type = 'RGB'

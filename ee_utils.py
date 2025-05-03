@@ -6,7 +6,7 @@ import re
 import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings, forest_change, SAR
+from ee_modules import rgb, ndvi, water, lulc, lst, openbuildings, forest_change, SAR, active_fire, gases
 import google.auth.credentials
 from functools import lru_cache
 from typing import Dict, Tuple, Optional, List, Union, Any
@@ -227,7 +227,7 @@ def get_clipped_tile_url(image: ee.Image, geometry: ee.Geometry, vis_params: Dic
 
 
 # This is the modified process_image function for ee_utils.py
-
+VALID_GAS_TYPES = ['CO', 'NO2', 'CH4', 'SO2']
 def process_image(geometry: ee.Geometry, processing_type: str, satellite: Optional[str] = None,
                  start_date: Optional[str] = None, end_date: Optional[str] = None,
                  year: Optional[int] = None) -> Tuple[Optional[ee.Image], Optional[Dict]]:
@@ -275,7 +275,14 @@ def process_image(geometry: ee.Geometry, processing_type: str, satellite: Option
             image, vis_params = forest_change.add_forest_loss(geometry)
         elif processing_type == 'FOREST_GAIN':
             image, vis_params = forest_change.add_forest_gain(geometry)
-
+        elif processing_type == 'ACTIVE_FIRE': # <-- ADD THIS NEW CHECK
+            logging.info(f"Calling Active Fire function with dates: {start_date} to {end_date}")
+             # Use the new module name 'active_fire', but the function name inside is still 'add_burn_severity'
+            image, vis_params = active_fire.add_burn_severity(geometry, start_date, end_date) # <-- CHANGED module name
+        elif processing_type in VALID_GAS_TYPES:
+            logging.info(f"Calling Gas Layer function for {processing_type} with dates: {start_date} to {end_date}")
+            # Pass the specific gas type (e.g., 'CO', 'NO2') as processing_type
+            image, vis_params = gases.add_gas_layer(geometry, processing_type, start_date, end_date)
         else:
             logging.warning(f"Invalid processing type: {processing_type}")
             return None, None
