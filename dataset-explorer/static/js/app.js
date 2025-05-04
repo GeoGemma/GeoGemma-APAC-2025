@@ -11,5 +11,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize search functionality
   Search.initEventListeners();
   
+  // Initialize prompt bar functionality
+  initPromptBar();
+  
   console.log('GEE Dataset Explorer initialized');
 });
