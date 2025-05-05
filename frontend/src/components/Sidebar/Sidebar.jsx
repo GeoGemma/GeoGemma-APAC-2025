@@ -10,10 +10,12 @@ import {
   GitCompare,      // Keep icon for display
   Download,        // Keep icon for display
   Shapes,          // New icon for GeoJSON
-  Loader
+  Loader,
+  MapPin           // New icon for GIS Agent
 } from 'lucide-react'; // Ensure Shapes is imported
 import { chatWithGemini } from '../../services/geminiService'; // Keep chat logic
 import ChatInput from './ChatInput'; // Keep chat logic
+import GISAgentUI from './GISAgentUI'; // New GIS Agent UI component
 import '../../styles/sidebar.css';
 import '../../styles/chat.css';
 
@@ -23,6 +25,7 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
+  const [activeSection, setActiveSection] = useState('chat'); // 'chat' or 'gisagent'
   const messagesEndRef = useRef(null);
 
   // --- Chat logic (useEffect, addMessage, handleNewChat, handleSendMessage, selectChat) remains the same ---
@@ -49,6 +52,9 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
       if (!isOpen) {
           setIsOpen(true);
       }
+      
+      // Ensure we're in the chat section
+      setActiveSection('chat');
 
       // Ensure a chat context exists or create one
       if (chatHistory.length === 0 && (prompt || response)) {
@@ -176,6 +182,9 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
 
     // Clear messages
     setMessages([]);
+    
+    // Set active section to chat
+    setActiveSection('chat');
 
     // Add a welcome message
     setTimeout(() => {
@@ -217,6 +226,9 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     }));
 
     setChatHistory(updatedHistory);
+    
+    // Make sure we're in the chat section
+    setActiveSection('chat');
 
     // In a real app, you would load the messages for this chat from database
     // For now, we'll just simulate it by clearing messages and adding a placeholder
@@ -238,6 +250,14 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     showNotification(`${featureName} feature coming soon!`, 'info');
   };
   // --- END NEW ---
+  
+  // Toggle between chat and GIS Agent sections
+  const toggleSection = (section) => {
+    setActiveSection(section);
+    if (!isOpen) {
+      setIsOpen(true);
+    }
+  };
 
   return (
     <div className={`sidebar ${isOpen ? 'expanded' : 'collapsed'}`}>
@@ -248,92 +268,120 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
             <div className="sidebar-slider" onClick={toggleSidebar} title="Collapse sidebar">
               <ChevronLeft size={20} />
             </div>
-          </div>
-
-          <button
-            className="new-chat-button"
-            onClick={handleNewChat}
-             // Use CSS variables or direct styles
-            style={{ backgroundColor: 'rgb(var(--color-primary))', color: 'rgb(var(--color-bg-dark))' }}
-          >
-            <Plus size={16} />
-            <span>New chat</span>
-          </button>
-
-          <div className="sidebar-content">
-            {/* --- Chat History Section --- */}
-             {chatHistory.length > 0 && (
-              <div className="chat-section">
-                {/* Optional: Hide title if only one chat exists? */}
-                {chatHistory.length > 1 && <h3>RECENT</h3>}
-                <div className="chat-history">
-                  {chatHistory.map((chat) => (
-                    <div
-                      key={chat.id}
-                      className={`chat-item ${chat.active ? 'active' : ''}`}
-                      onClick={() => selectChat(chat.id)}
-                      title={chat.title} // Add tooltip
-                    >
-                      <MessageSquare size={14} />
-                      <span>{chat.title}</span>
-                       {/* Add delete/rename icons here if needed */}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* --- Chat Messages Section --- */}
-            <div className="chat-messages">
-              {messages.length === 0 && chatHistory.length === 0 ? ( // Show only if NO chats exist
-                <div className="empty-chat">
-                  <MessageSquare size={32} className="empty-icon" />
-                  <h4>No messages yet</h4>
-                  <p>Start a conversation or use the search bar to explore Earth imagery</p>
-                </div>
-              ) : (
-                 messages.length === 0 && chatHistory.some(c => c.active) ? ( // Show if chat exists but is empty
-                    <div className="empty-chat">
-                        <p>Send a message to start exploring...</p>
-                    </div>
-                 ) : (
-                    <>
-                    {messages.map(message => (
-                        <div
-                        key={message.id}
-                        className={`chat-message ${message.sender === 'user' ? 'chat-message-user' : 'chat-message-system'}`}
-                        >
-                        <div className={`message-avatar ${message.sender === 'user' ? 'avatar-user' : 'avatar-system'}`}>
-                            {/* Placeholder initials or icons */}
-                            {message.sender === 'user' ? 'U' : 'G'}
-                        </div>
-                        <div className="message-content">
-                            {/* Basic markdown rendering could be added here */}
-                            <p>{message.text}</p>
-                        </div>
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <div className="chat-message chat-message-system">
-                        <div className="message-avatar avatar-system">G</div>
-                        <div className="message-content">
-                            <div className="typing-indicator">
-                                {/* Using Loader icon */}
-                                <Loader size={16} className="animate-spin"/>
-                                <span>Thinking...</span>
-                            </div>
-                        </div>
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                    </>
-                 )
-              )}
+            
+            {/* Section switcher */}
+            <div className="section-switcher">
+              <button 
+                className={`section-btn ${activeSection === 'chat' ? 'active' : ''}`}
+                onClick={() => toggleSection('chat')}
+                title="Chat"
+              >
+                <MessageSquare size={16} />
+                <span>Chat</span>
+              </button>
+              <button 
+                className={`section-btn ${activeSection === 'gisagent' ? 'active' : ''}`}
+                onClick={() => toggleSection('gisagent')}
+                title="GIS Agent"
+              >
+                <MapPin size={16} />
+                <span>GIS Agent</span>
+              </button>
             </div>
           </div>
 
-          {/* Chat input component */}
-          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          {activeSection === 'chat' ? (
+            // Chat Section
+            <>
+              <button
+                className="new-chat-button"
+                onClick={handleNewChat}
+                // Use CSS variables or direct styles
+                style={{ backgroundColor: 'rgb(var(--color-primary))', color: 'rgb(var(--color-bg-dark))' }}
+              >
+                <Plus size={16} />
+                <span>New chat</span>
+              </button>
+
+              <div className="sidebar-content">
+                {/* --- Chat History Section --- */}
+                {chatHistory.length > 0 && (
+                  <div className="chat-section">
+                    {/* Optional: Hide title if only one chat exists? */}
+                    {chatHistory.length > 1 && <h3>RECENT</h3>}
+                    <div className="chat-history">
+                      {chatHistory.map((chat) => (
+                        <div
+                          key={chat.id}
+                          className={`chat-item ${chat.active ? 'active' : ''}`}
+                          onClick={() => selectChat(chat.id)}
+                          title={chat.title} // Add tooltip
+                        >
+                          <MessageSquare size={14} />
+                          <span>{chat.title}</span>
+                          {/* Add delete/rename icons here if needed */}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* --- Chat Messages Section --- */}
+                <div className="chat-messages">
+                  {messages.length === 0 && chatHistory.length === 0 ? ( // Show only if NO chats exist
+                    <div className="empty-chat">
+                      <MessageSquare size={32} className="empty-icon" />
+                      <h4>No messages yet</h4>
+                      <p>Start a conversation or use the search bar to explore Earth imagery</p>
+                    </div>
+                  ) : (
+                    messages.length === 0 && chatHistory.some(c => c.active) ? ( // Show if chat exists but is empty
+                        <div className="empty-chat">
+                            <p>Send a message to start exploring...</p>
+                        </div>
+                    ) : (
+                        <>
+                        {messages.map(message => (
+                            <div
+                            key={message.id}
+                            className={`chat-message ${message.sender === 'user' ? 'chat-message-user' : 'chat-message-system'}`}
+                            >
+                            <div className={`message-avatar ${message.sender === 'user' ? 'avatar-user' : 'avatar-system'}`}>
+                                {/* Placeholder initials or icons */}
+                                {message.sender === 'user' ? 'U' : 'G'}
+                            </div>
+                            <div className="message-content">
+                                {/* Basic markdown rendering could be added here */}
+                                <p>{message.text}</p>
+                            </div>
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <div className="chat-message chat-message-system">
+                            <div className="message-avatar avatar-system">G</div>
+                            <div className="message-content">
+                                <div className="typing-indicator">
+                                    {/* Using Loader icon */}
+                                    <Loader size={16} className="animate-spin"/>
+                                    <span>Thinking...</span>
+                                </div>
+                            </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                        </>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Chat input component */}
+              <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+            </>
+          ) : (
+            // GIS Agent Section
+            <GISAgentUI showNotification={showNotification} />
+          )}
 
           {/* --- Analysis tools section (MODIFIED) --- */}
           <div className="sidebar-tools">
@@ -381,13 +429,28 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
           </div>
 
           <div className="sidebar-icons">
-             {/* Make chat icon dynamic based on active chat? */}
+            {/* Chat icon */}
             <button
-              className="sidebar-icon active" // Always show chat as active when collapsed?
+              className={`sidebar-icon ${activeSection === 'chat' ? 'active' : ''}`}
               title="Chat"
-              onClick={toggleSidebar} // Clicking chat icon expands sidebar
+              onClick={() => {
+                toggleSection('chat');
+                setIsOpen(true);
+              }}
             >
               <MessageSquare size={20} />
+            </button>
+            
+            {/* GIS Agent icon */}
+            <button
+              className={`sidebar-icon ${activeSection === 'gisagent' ? 'active' : ''}`}
+              title="GIS Agent"
+              onClick={() => {
+                toggleSection('gisagent');
+                setIsOpen(true);
+              }}
+            >
+              <MapPin size={20} />
             </button>
 
             <button

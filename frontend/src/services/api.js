@@ -1,8 +1,8 @@
 // src/services/api.js
 import axios from 'axios';
 
-// Get base URL from environment variable or default to localhost
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+// Get base URL from environment variable or default to the deployed backend
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://geogemma-backend-312711753493.us-central1.run.app';
 
 // Create axios instance with base configuration
 const api = axios.create({

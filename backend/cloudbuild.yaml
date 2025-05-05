@@ -1,0 +1,29 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/geogemma-458120/geogemma-backend:$COMMIT_SHA', '.']
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/geogemma-458120/geogemma-backend:$COMMIT_SHA']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'geogemma-backend'
+      - '--image=gcr.io/geogemma-458120/geogemma-backend:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=2Gi'
+      - '--cpu=1'
+      - '--set-env-vars=EE_PROJECT_ID=geogemma-458120'
+      - '--set-env-vars=SECRET_KEY=your-production-secret-key'
+
+images:
+  - 'gcr.io/geogemma-458120/geogemma-backend:$COMMIT_SHA'
+
+timeout: 1800s 

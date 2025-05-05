@@ -1,0 +1,55 @@
+site_name: GeoGemma Backend
+site_description: Documentation for the GeoGemma backend
+site_author: GeoGemma Team
+
+repo_url: https://github.com/username/GeoGemma
+edit_uri: edit/main/backend/docs/
+
+theme:
+  name: material
+  palette:
+    primary: teal
+    accent: deep orange
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.top
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tabbed
+  - pymdownx.tasklist
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          selection:
+            docstring_style: google
+          rendering:
+            show_source: true
+
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - API Layer: architecture/api.md
+    - Services: architecture/services.md
+    - Data Models: architecture/models.md
+  - API Reference:
+    - Endpoints: api/endpoints.md
+    - Models: api/models.md
+  - Development Guide:
+    - Setup: dev/setup.md
+    - Contributing: dev/contributing.md
+    - Testing: dev/testing.md 

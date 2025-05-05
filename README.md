@@ -210,3 +210,78 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Google Gemini for the conversational AI component
 - MapLibre GL JS for the mapping visualization
 - The open-source community for various libraries and tools used in this project
+
+## Backend Architecture
+
+The backend is built with FastAPI and follows a modular, service-oriented architecture:
+
+```
+backend/
+  ├── src/
+  │   ├── api/             # API routes
+  │   │   └── routers/     # API route modules
+  │   ├── config/          # Configuration
+  │   ├── middleware/      # Middleware components
+  │   ├── models/          # Data models
+  │   ├── services/        # Service layer
+  │   └── utils/           # Utility functions
+  ├── ee_modules/          # Earth Engine modules
+  ├── ee_config/           # Earth Engine configuration
+  ├── app.py               # Application entry point
+  ├── requirements.txt     # Python dependencies
+  └── Dockerfile           # Docker configuration
+```
+
+### Key Components
+
+- **API Layer**: Routes and endpoint handlers
+- **Service Layer**: Business logic and external services
+- **Models**: Data validation and schemas using Pydantic
+- **Configuration**: Environment-based configuration
+- **Middleware**: Cross-cutting concerns like rate limiting
+
+## Environment Setup
+
+Create a `.env` file in the project root with the following variables:
+
+```
+EE_PROJECT_ID=your-gcp-project-id
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemma-3-4b-it
+SECRET_KEY=your-secret-key
+```
+
+## Running the Application
+
+### Local Development
+
+1. Install dependencies:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+2. Run the application:
+
+```bash
+cd backend
+python app.py
+```
+
+### Docker
+
+```bash
+cd backend
+docker-compose up
+```
+
+## API Documentation
+
+API documentation is available at `/api/docs` when the application is running.
+
+## Contributing
+
+1. Follow the modular architecture
+2. Add comprehensive docstrings
+3. Use type hints
+4. Include tests for new functionality

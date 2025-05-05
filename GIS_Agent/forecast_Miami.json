@@ -1,0 +1,684 @@
+{
+  "location": {
+    "name": "Miami",
+    "country": "US",
+    "coordinates": {
+      "latitude": 25.7743,
+      "longitude": -80.1937
+    }
+  },
+  "forecast": [
+    {
+      "timestamp": 1746295200,
+      "date_time": "2025-05-03 18:00:00",
+      "temperature": {
+        "value": 27.88,
+        "feels_like": 30.82,
+        "min": 27.88,
+        "max": 28.84,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 20.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 73,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.83,
+        "direction": 140,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746306000,
+      "date_time": "2025-05-03 21:00:00",
+      "temperature": {
+        "value": 28.25,
+        "feels_like": 31.01,
+        "min": 28.25,
+        "max": 28.68,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 20.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 69,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.96,
+        "direction": 140,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746316800,
+      "date_time": "2025-05-04 00:00:00",
+      "temperature": {
+        "value": 25.59,
+        "feels_like": 25.95,
+        "min": 25.59,
+        "max": 25.59,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "clear sky",
+        "icon": "01n"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 67,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.52,
+        "direction": 131,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746327600,
+      "date_time": "2025-05-04 03:00:00",
+      "temperature": {
+        "value": 24.59,
+        "feels_like": 24.96,
+        "min": 24.59,
+        "max": 24.59,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "clear sky",
+        "icon": "01n"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 71,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.32,
+        "direction": 127,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746338400,
+      "date_time": "2025-05-04 06:00:00",
+      "temperature": {
+        "value": 23.31,
+        "feels_like": 23.55,
+        "min": 23.31,
+        "max": 23.31,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "few clouds",
+        "icon": "02n"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 71,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.8,
+        "direction": 159,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746349200,
+      "date_time": "2025-05-04 09:00:00",
+      "temperature": {
+        "value": 25.08,
+        "feels_like": 25.63,
+        "min": 25.08,
+        "max": 25.08,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "broken clouds",
+        "icon": "04n"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 76,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.92,
+        "direction": 161,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746360000,
+      "date_time": "2025-05-04 12:00:00",
+      "temperature": {
+        "value": 25.56,
+        "feels_like": 26.13,
+        "min": 25.56,
+        "max": 25.56,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 20.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 75,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.8,
+        "direction": 165,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746370800,
+      "date_time": "2025-05-04 15:00:00",
+      "temperature": {
+        "value": 27.04,
+        "feels_like": 28.59,
+        "min": 27.04,
+        "max": 27.04,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "few clouds",
+        "icon": "02d"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 66,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.39,
+        "direction": 157,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746381600,
+      "date_time": "2025-05-04 18:00:00",
+      "temperature": {
+        "value": 26.82,
+        "feels_like": 28.56,
+        "min": 26.82,
+        "max": 26.82,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 20.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 70,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 6.86,
+        "direction": 145,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746392400,
+      "date_time": "2025-05-04 21:00:00",
+      "temperature": {
+        "value": 27.22,
+        "feels_like": 29.23,
+        "min": 27.22,
+        "max": 27.22,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 63.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 70,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 8.82,
+        "direction": 163,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746403200,
+      "date_time": "2025-05-05 00:00:00",
+      "temperature": {
+        "value": 26.5,
+        "feels_like": 26.5,
+        "min": 26.5,
+        "max": 26.5,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "moderate rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 100,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 71,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.17,
+        "direction": 120,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746414000,
+      "date_time": "2025-05-05 03:00:00",
+      "temperature": {
+        "value": 26.16,
+        "feels_like": 26.16,
+        "min": 26.16,
+        "max": 26.16,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 37.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 75,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 3.12,
+        "direction": 167,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746424800,
+      "date_time": "2025-05-05 06:00:00",
+      "temperature": {
+        "value": 25.11,
+        "feels_like": 25.74,
+        "min": 25.11,
+        "max": 25.11,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 100,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 79,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 2.94,
+        "direction": 153,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746435600,
+      "date_time": "2025-05-05 09:00:00",
+      "temperature": {
+        "value": 25.45,
+        "feels_like": 26.06,
+        "min": 25.45,
+        "max": 25.45,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 55.00000000000001,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 77,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 3.7,
+        "direction": 152,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746446400,
+      "date_time": "2025-05-05 12:00:00",
+      "temperature": {
+        "value": 25.47,
+        "feels_like": 26.06,
+        "min": 25.47,
+        "max": 25.47,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10d"
+      },
+      "precipitation": {
+        "probability": 78.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 76,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 3.08,
+        "direction": 151,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746457200,
+      "date_time": "2025-05-05 15:00:00",
+      "temperature": {
+        "value": 26.71,
+        "feels_like": 28.38,
+        "min": 26.71,
+        "max": 26.71,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "clear sky",
+        "icon": "01d"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 70,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.77,
+        "direction": 127,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746468000,
+      "date_time": "2025-05-05 18:00:00",
+      "temperature": {
+        "value": 27.23,
+        "feels_like": 29.16,
+        "min": 27.23,
+        "max": 27.23,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "clear sky",
+        "icon": "01d"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 69,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.19,
+        "direction": 132,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746478800,
+      "date_time": "2025-05-05 21:00:00",
+      "temperature": {
+        "value": 26.75,
+        "feels_like": 28.59,
+        "min": 26.75,
+        "max": 26.75,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "clear sky",
+        "icon": "01d"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 72,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 7.87,
+        "direction": 123,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746489600,
+      "date_time": "2025-05-06 00:00:00",
+      "temperature": {
+        "value": 26.28,
+        "feels_like": 26.28,
+        "min": 26.28,
+        "max": 26.28,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 68.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 72,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.62,
+        "direction": 100,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746500400,
+      "date_time": "2025-05-06 03:00:00",
+      "temperature": {
+        "value": 25.7,
+        "feels_like": 26.23,
+        "min": 25.7,
+        "max": 25.7,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 100,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 73,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 4.32,
+        "direction": 88,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746511200,
+      "date_time": "2025-05-06 06:00:00",
+      "temperature": {
+        "value": 25.76,
+        "feels_like": 26.27,
+        "min": 25.76,
+        "max": 25.76,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "scattered clouds",
+        "icon": "03n"
+      },
+      "precipitation": {
+        "probability": 80.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 72,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.67,
+        "direction": 98,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746522000,
+      "date_time": "2025-05-06 09:00:00",
+      "temperature": {
+        "value": 25.44,
+        "feels_like": 26.13,
+        "min": 25.44,
+        "max": 25.44,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "light rain",
+        "icon": "10n"
+      },
+      "precipitation": {
+        "probability": 34.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 80,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.42,
+        "direction": 119,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746532800,
+      "date_time": "2025-05-06 12:00:00",
+      "temperature": {
+        "value": 25.73,
+        "feels_like": 26.32,
+        "min": 25.73,
+        "max": 25.73,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "few clouds",
+        "icon": "02d"
+      },
+      "precipitation": {
+        "probability": 21.0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 75,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 5.83,
+        "direction": 117,
+        "speed_unit": "m/s"
+      }
+    },
+    {
+      "timestamp": 1746543600,
+      "date_time": "2025-05-06 15:00:00",
+      "temperature": {
+        "value": 26.8,
+        "feels_like": 28.52,
+        "min": 26.8,
+        "max": 26.8,
+        "unit": "\u00b0C"
+      },
+      "weather": {
+        "description": "few clouds",
+        "icon": "02d"
+      },
+      "precipitation": {
+        "probability": 0,
+        "unit": "%"
+      },
+      "humidity": {
+        "value": 70,
+        "unit": "%"
+      },
+      "wind": {
+        "speed": 6.14,
+        "direction": 122,
+        "speed_unit": "m/s"
+      }
+    }
+  ]
+}

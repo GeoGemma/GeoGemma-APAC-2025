@@ -1,0 +1,147 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment and local configurations
+.env
+.venv
+env/
+venv/
+ENV/
+.env.*
+!.env.template
+!.env.example
+
+# API keys and credentials
+config/*.yaml
+!config/*.example
+!config/*.template
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.p7b
+*.p7c
+*.pfx
+*.p12
+private_key.json
+*credentials*.json
+*service-account*.json
+
+# Data, logs and cache
+logs/
+data/cache/
+data/temp/
+*.log
+*.log.*
+.cache
+tmp/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.~*
+*~
+._*
+Thumbs.db
+.vim/
+
+# Docker
+.dockerenv
+docker-compose.override.yml
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Test and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Sphinx documentation
+docs/_build/
+docs/api/
+
+# Testing
+test_output/
+.coverage
+coverage.xml
+*.cover
+
+# Node modules (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production files
+nginx/ssl/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+.ropeproject
+
+# Logs
+*.log
+logs/
+gis_agent.log
+
+# Cache files
+GIS_Agent/data/cache/*
+!GIS_Agent/data/cache/.gitkeep
+
+# API Keys
+GIS_Agent/config/api_keys.yaml
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 
