@@ -10,6 +10,8 @@ import PromptForm from './components/UI/PromptForm';
 import Notification from './components/UI/Notification.jsx';
 import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import FloatingDrawingTools from './components/Map/DrawingTools.jsx'; 
+import TutorialManager from './components/Tutorial/TutorialManager';
+import { TutorialProvider } from './contexts/TutorialContext';
 import './styles/font.css';
 import './styles/mapLegend.css';
 import './styles/metadata.css';
@@ -72,38 +74,42 @@ function App() {
   return (
     <AuthProvider>
       <MapProvider>
-        <GlobalStyles />
-        <Layout sidebarExpanded={sidebarExpanded} showNotification={showNotification}>
-          <Sidebar
-            showNotification={showNotification}
-            onToggleSidebar={toggleSidebar}
-          />
-          <AppMap />
-          <RightSidebar showNotification={showNotification} />
-          
-          {/* FloatingDrawingTools component */}
-          <FloatingDrawingTools showNotification={showNotification} />
-          
-          <PromptForm
-            showNotification={showNotification}
-            showLoading={showLoading}
-            hideLoading={hideLoading}
-          />
-
-          {notification && (
-            <Notification
-              key={notification.id}
-              message={notification.message}
-              type={notification.type}
-              duration={notification.duration}
-              onClose={handleCloseNotification}
+        <TutorialProvider>
+          <GlobalStyles />
+          <Layout sidebarExpanded={sidebarExpanded} showNotification={showNotification}>
+            <Sidebar
+              showNotification={showNotification}
+              onToggleSidebar={toggleSidebar}
             />
-          )}
+            <AppMap />
+            <RightSidebar showNotification={showNotification} />
+            
+            <FloatingDrawingTools showNotification={showNotification} />
+            
+            <PromptForm
+              showNotification={showNotification}
+              showLoading={showLoading}
+              hideLoading={hideLoading}
+            />
 
-          {isLoading && (
-            <StatusIndicator message={loadingMessage} />
-          )}
-        </Layout>
+            {notification && (
+              <Notification
+                key={notification.id}
+                message={notification.message}
+                type={notification.type}
+                duration={notification.duration}
+                onClose={handleCloseNotification}
+              />
+            )}
+
+            {isLoading && (
+              <StatusIndicator message={loadingMessage} />
+            )}
+            
+          
+            <TutorialManager />
+          </Layout>
+        </TutorialProvider>
       </MapProvider>
     </AuthProvider>
   );
