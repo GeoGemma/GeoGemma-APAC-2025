@@ -1,4 +1,4 @@
-// src/contexts/MapContext.jsx - Enhanced with gas, fire, and drawing support
+// src/contexts/MapContext.jsx - Enhanced with satellite basemap support
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useAuth } from './AuthContext';
@@ -11,6 +11,7 @@ export function MapProvider({ children }) {
   const [layers, setLayers] = useState([]);
   const [markers, setMarkers] = useState([]);
   const [drawnFeatures, setDrawnFeatures] = useState([]); // State for drawn features
+  const [currentBasemap, setCurrentBasemap] = useState('dark'); // 'dark' or 'satellite'
   const mapInitializedRef = useRef(false);
   const { currentUser } = useAuth();
   
@@ -83,36 +84,60 @@ export function MapProvider({ children }) {
     fetchUserLayers();
   }, [currentUser, map]);
 
-  // Initialize map with dark theme
+  // Initialize map with dark theme or satellite imagery
   const initializeMap = (container) => {
     if (mapInitializedRef.current) return;
     
-    // Define a dark style directly inline
-    const darkStyle = {
-      version: 8,
-      name: 'Dark',
-      sources: {
-        'raster-tiles': {
-          type: 'raster',
-          tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        }
+    // Define basemap styles
+    const basemapStyles = {
+      dark: {
+        version: 8,
+        name: 'Dark',
+        sources: {
+          'raster-tiles': {
+            type: 'raster',
+            tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          }
+        },
+        layers: [
+          {
+            id: 'dark-tiles',
+            type: 'raster',
+            source: 'raster-tiles',
+            minzoom: 0,
+            maxzoom: 22
+          }
+        ]
       },
-      layers: [
-        {
-          id: 'dark-tiles',
-          type: 'raster',
-          source: 'raster-tiles',
-          minzoom: 0,
-          maxzoom: 22
-        }
-      ]
+      satellite: {
+        version: 8,
+        name: 'Satellite',
+        sources: {
+          'satellite-tiles': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; <a href="https://www.maxar.com/">Maxar</a>'
+          }
+        },
+        layers: [
+          {
+            id: 'satellite-tiles',
+            type: 'raster',
+            source: 'satellite-tiles',
+            minzoom: 0,
+            maxzoom: 22
+          }
+        ]
+      }
     };
     
+    // Use the current basemap style
     const newMap = new maplibregl.Map({
       container,
-      style: darkStyle,
+      style: basemapStyles[currentBasemap],
       center: mapState.center,
       zoom: mapState.zoom,
       attributionControl: false
@@ -141,6 +166,88 @@ export function MapProvider({ children }) {
 
     setMap(newMap);
     mapInitializedRef.current = true;
+  };
+
+  // Set basemap type (dark or satellite)
+  const setBasemap = (basemapId) => {
+    if (!map || !basemapId || basemapId === currentBasemap) return;
+    
+    // Define basemap styles
+    const basemapStyles = {
+      dark: {
+        version: 8,
+        name: 'Dark',
+        sources: {
+          'raster-tiles': {
+            type: 'raster',
+            tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          }
+        },
+        layers: [
+          {
+            id: 'dark-tiles',
+            type: 'raster',
+            source: 'raster-tiles',
+            minzoom: 0,
+            maxzoom: 22
+          }
+        ]
+      },
+      satellite: {
+        version: 8,
+        name: 'Satellite',
+        sources: {
+          'satellite-tiles': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; <a href="https://www.maxar.com/">Maxar</a>'
+          }
+        },
+        layers: [
+          {
+            id: 'satellite-tiles',
+            type: 'raster',
+            source: 'satellite-tiles',
+            minzoom: 0,
+            maxzoom: 22
+          }
+        ]
+      }
+    };
+    
+    // Save the current map state
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const bearing = map.getBearing();
+    const pitch = map.getPitch();
+    
+    // Update the basemap
+    map.setStyle(basemapStyles[basemapId]);
+    
+    // When style is loaded, restore the layers
+    map.once('styledata', () => {
+      // Restore map state
+      map.setCenter(center);
+      map.setZoom(zoom);
+      map.setBearing(bearing);
+      map.setPitch(pitch);
+      
+      // Re-add all layers that were on the map
+      layers.forEach(layer => {
+        const sourceId = `ee-source-${layer.id}`;
+        const layerId = `ee-layer-${layer.id}`;
+        
+        if (layer.tile_url) {
+          addLayerToMap(map, layer, sourceId, layerId, setLayers);
+        }
+      });
+    });
+    
+    // Update state
+    setCurrentBasemap(basemapId);
   };
 
   const addLayer = async (layerData) => {
@@ -880,13 +987,15 @@ export function MapProvider({ children }) {
     clearLayers,
     toggleLayerVisibility,
     setLayerOpacity,
-    filterLayerByRange, // Added function for layer filtering
+    filterLayerByRange,
     reorderLayers,
     focusOnLayer,
     addMarker,
     clearMarkers,
     flyToLocation,
     mapState,
+    currentBasemap,
+    setBasemap,
     // Drawing tools functions
     addDrawnFeature,
     updateDrawnFeature,

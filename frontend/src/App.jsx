@@ -12,11 +12,13 @@ import StatusIndicator from './components/UI/StatusIndicator.jsx';
 import FloatingDrawingTools from './components/Map/DrawingTools.jsx'; 
 import TutorialManager from './components/Tutorial/TutorialManager';
 import { TutorialProvider } from './contexts/TutorialContext';
+import BasemapControl from './components/Map/BasemapControl'; // Import BasemapControl
 import './styles/font.css';
 import './styles/mapLegend.css';
 import './styles/metadata.css';
 import './styles/profileMenu.css';
-import './styles/drawingTools.css'; 
+import './styles/drawingTools.css';
+import './styles/BasemapControl.css'; // Import basemap control styles
 
 // GlobalStyles component remains the same
 const GlobalStyles = () => {
@@ -83,6 +85,9 @@ function App() {
             />
             <AppMap />
             <RightSidebar showNotification={showNotification} />
+            
+            {/* Add BasemapControl component */}
+            <BasemapControl />
             
             <FloatingDrawingTools showNotification={showNotification} />
             
