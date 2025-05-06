@@ -19,7 +19,8 @@ from src.api.routers import (
     user_router,
     chat_router,
     custom_areas_router,
-    health_router
+    health_router,
+    pixel_value_router
 )
 
 # Import middleware
@@ -80,6 +81,7 @@ app.include_router(layers_router, prefix="/api", tags=["Layers"])
 app.include_router(user_router, prefix="/api", tags=["Users"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(custom_areas_router, prefix="/api", tags=["Custom Areas"])
+app.include_router(pixel_value_router, prefix="/api", tags=["Pixel Values"])
 
 # Startup and shutdown events
 @app.on_event("startup")

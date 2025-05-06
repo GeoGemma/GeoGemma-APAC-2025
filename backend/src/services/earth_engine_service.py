@@ -65,18 +65,32 @@ def _initialize_ee_sync(project_id: str) -> Tuple[bool, Optional[str]]:
     try:
         logger.info(f"Attempting Earth Engine authentication with project ID: {project_id}")
         
-        # Use the service account method from authenticate_ee.py
-        from authenticate_ee import initialize_ee as ee_service_account_init
-        
-        # Call the initialization function from authenticate_ee.py
-        success, error = ee_service_account_init(project_id)
-        
-        if success:
-            logger.info(f"Earth Engine initialized successfully with project: {project_id} using service account")
-            return True, None
-        else:
-            logger.error(f"Earth Engine initialization failed: {error}")
-            return False, error
+        # Try to initialize Earth Engine with service account credentials
+        try:
+            # First try with service account credentials
+            credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            if credentials_path and os.path.exists(credentials_path):
+                logger.info(f"Using service account credentials from {credentials_path}")
+                credentials = ee.ServiceAccountCredentials(None, credentials_path)
+                ee.Initialize(credentials, project=project_id)
+                logger.info(f"Earth Engine initialized successfully with project: {project_id} using service account")
+                return True, None
+            else:
+                # Fall back to application default credentials
+                logger.info("Service account credentials not found, using application default credentials")
+                ee.Initialize(project=project_id)
+                logger.info(f"Earth Engine initialized successfully with project: {project_id} using app default credentials")
+                return True, None
+        except Exception as e:
+            # If service account fails, try with application default 
+            logger.warning(f"Service account initialization failed: {e}, trying app default")
+            try:
+                ee.Initialize(project=project_id)
+                logger.info(f"Earth Engine initialized successfully with project: {project_id} using app default credentials")
+                return True, None
+            except Exception as inner_e:
+                # If both methods fail, raise the error
+                raise inner_e
 
     except Exception as e:
         # Catch potential errors like google.auth.exceptions.DefaultCredentialsError
@@ -125,4 +139,4 @@ async def run_ee_operation(operation_func, *args, **kwargs):
             return result
         except Exception as e:
             logger.error(f"Error in Earth Engine operation: {e}")
-            raise 
+            raise

@@ -10,13 +10,14 @@ import {
   Info, 
   PinOff, 
   Pin,
-  Download
+  Download,
+  AlertTriangle
 } from 'lucide-react';
 import '../../styles/mapInspector.css';
 
 const MapInspector = ({ showNotification }) => {
   const { map, layers, selectedLayerId, selectLayer } = useMap();
-  const { pixelValues, isLoading, fetchPixelValue, clearPixelValues } = usePixelValues();
+  const { pixelValues, isLoading, error, fetchPixelValue, clearPixelValues } = usePixelValues();
   
   const [isInspecting, setIsInspecting] = useState(false);
   const [inspectPoint, setInspectPoint] = useState(null);
@@ -392,14 +393,53 @@ const MapInspector = ({ showNotification }) => {
   const renderPixelValue = (value) => {
     if (!value) return <span>No data available</span>;
     
+    // Add an indicator if using mock data
+    const isMockData = value.isMock;
+    
     if (value.categorical) {
-      return renderCategoricalValue(value);
+      return (
+        <div>
+          {renderCategoricalValue(value)}
+          {isMockData && (
+            <div className="text-xs mt-1 text-google-yellow italic">
+              * Using estimated values (could not fetch actual data)
+            </div>
+          )}
+        </div>
+      );
     } else if (value.type === 'RGB Values') {
-      return renderRGBValues(value);
+      return (
+        <div>
+          {renderRGBValues(value)}
+          {isMockData && (
+            <div className="text-xs mt-1 text-google-yellow italic">
+              * Using estimated values (could not fetch actual data)
+            </div>
+          )}
+        </div>
+      );
     } else if (value.value !== 'N/A') {
-      return renderNumericalValue(value);
+      return (
+        <div>
+          {renderNumericalValue(value)}
+          {isMockData && (
+            <div className="text-xs mt-1 text-google-yellow italic">
+              * Using estimated values (could not fetch actual data)
+            </div>
+          )}
+        </div>
+      );
     } else {
-      return <span>{value.value}</span>;
+      return (
+        <div>
+          <span>{value.value}</span>
+          {isMockData && (
+            <div className="text-xs mt-1 text-google-yellow italic">
+              * Using estimated values (could not fetch actual data)
+            </div>
+          )}
+        </div>
+      );
     }
   };
 
@@ -514,8 +554,21 @@ const MapInspector = ({ showNotification }) => {
                   </div>
                   
                   <div className="mt-2">
-                    {renderPixelValue(pixelValues[activeLayer.id])}
+                    {isLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-google-blue"></div>
+                      </div>
+                    ) : (
+                      renderPixelValue(pixelValues[activeLayer.id])
+                    )}
                   </div>
+                  
+                  {error && (
+                    <div className="mt-2 text-google-red text-xs flex items-center gap-1">
+                      <AlertTriangle size={14} />
+                      <span>{error}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
