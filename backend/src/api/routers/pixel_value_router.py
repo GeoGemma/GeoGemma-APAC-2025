@@ -23,7 +23,7 @@ class PixelValueRequest(BaseModel):
 # Get settings
 settings = Settings()
 
-@router.post("/api/pixel-value")
+@router.post("/pixel-value") 
 async def get_pixel_value(request: PixelValueRequest = Body(...)):
     """Get the pixel value at specific coordinates for a layer."""
     try:
