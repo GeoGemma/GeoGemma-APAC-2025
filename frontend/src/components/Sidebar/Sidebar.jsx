@@ -48,11 +48,6 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     const handlePromptSubmit = async (event) => {
       const { prompt, response } = event.detail;
 
-      // If sidebar isn't open, open it to show the chat interaction
-      if (!isOpen) {
-          setIsOpen(true);
-      }
-      
       // Ensure we're in the chat section
       setActiveSection('chat');
 

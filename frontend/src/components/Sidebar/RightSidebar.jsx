@@ -17,7 +17,7 @@ import MapInspector from '../Map/MapInspector';
 import MapLegend from '../Map/MapLegend';
 import LayersList from './LayersList';
 import { clearLayers as clearLayersApi } from '../../services/api';
-import './RightSidebar.css';
+import '../../styles/RightSidebar.css';
 import '../../styles/layerList.css';
 
 const RightSidebar = ({ showNotification }) => {
