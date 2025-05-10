@@ -585,7 +585,6 @@ def process_time_series(geometry: ee.Geometry, processing_type: str, start_date:
                 timestep_result['error'] = 'Could not process image for this interval'
                 timestep_result['metadata'] = {"Status": "Image processing failed for timestep"}
 
-
             results.append(timestep_result)
 
         return results

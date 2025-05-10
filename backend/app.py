@@ -14,7 +14,6 @@ from src.config.settings import Settings
 # Import API routers
 from src.api.routers import (
     analysis_router,
-    time_series_router,
     layers_router,
     user_router,
     chat_router,
@@ -32,6 +31,10 @@ from fastapi.staticfiles import StaticFiles
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("app")
+
+# Set specific logger levels
+logging.getLogger("ee_utils").setLevel(logging.WARNING)
+logging.getLogger("ee_metadata").setLevel(logging.WARNING)
 
 # Load environment variables
 load_dotenv()
@@ -76,7 +79,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include routers
 app.include_router(health_router, tags=["Health Check"])
 app.include_router(analysis_router, prefix="/api", tags=["Analysis"])
-app.include_router(time_series_router, prefix="/api", tags=["Time Series"])
 app.include_router(layers_router, prefix="/api", tags=["Layers"])
 app.include_router(user_router, prefix="/api", tags=["Users"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])

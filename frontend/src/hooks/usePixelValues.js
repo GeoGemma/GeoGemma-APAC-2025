@@ -132,7 +132,20 @@ const usePixelValues = () => {
           [layerId]: formattedValue
         }));
       } else {
-        throw new Error(response.data.message || "Failed to fetch pixel value");
+        // If backend returns a specific 'no data' message, show it
+        if (response.data.message && response.data.message.includes('No') && response.data.message.includes('pixel data')) {
+          setPixelValues(prev => ({
+            ...prev,
+            [layerId]: {
+              type: layer.processing_type || 'Unknown',
+              value: null,
+              message: response.data.message,
+              metadata: layer.metadata
+            }
+          }));
+        } else {
+          throw new Error(response.data.message || "Failed to fetch pixel value");
+        }
       }
     } catch (err) {
       console.error("Error fetching pixel value:", err);

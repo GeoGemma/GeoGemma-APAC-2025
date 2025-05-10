@@ -1,7 +1,7 @@
 # src/api/routers/pixel_value_router.py
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import ee
 import logging
 from datetime import datetime
@@ -19,6 +19,15 @@ class PixelValueRequest(BaseModel):
     processing_type: str
     ee_collection_id: Optional[str] = None
     image_date: Optional[str] = None
+
+class HistogramRequest(BaseModel):
+    geometry: Dict[str, Any]  # GeoJSON geometry
+    processing_type: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    ee_collection_id: Optional[str] = None
+    band_name: Optional[str] = None
+    scale: Optional[int] = None
 
 # Get settings
 settings = Settings()
@@ -45,9 +54,9 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
         
         async def get_image_and_sample():
             """Get the appropriate image and sample the pixel value"""
-            # Get the appropriate collection or image
             image = None
             band_name = None
+            scale = 30  # Default scale
             
             if request.ee_collection_id:
                 # Use the provided collection ID
@@ -84,7 +93,7 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
                         )
                     image = collection.select('NDVI').median()
                     band_name = 'NDVI'
-                    
+                    scale = 250  # MODIS NDVI native resolution
                 elif processing_type == 'LST':
                     collection = ee.ImageCollection('MODIS/006/MOD11A1')
                     if request.image_date:
@@ -94,18 +103,17 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
                             ee.Date(date.strftime('%Y-%m-%d')).advance(1, 'day')
                         )
                     image = collection.select('LST_Day_1km').median()
-                    # Convert from Kelvin to Celsius
                     image = image.multiply(0.02).subtract(273.15).rename('LST_Celsius')
                     band_name = 'LST_Celsius'
-                    
+                    scale = 1000  # MODIS LST native resolution
                 elif processing_type == 'SURFACE WATER':
                     image = ee.Image('JRC/GSW1_3/GlobalSurfaceWater')
                     band_name = 'occurrence'
-                    
+                    scale = 30
                 elif processing_type == 'LULC':
                     image = ee.Image('ESA/WorldCover/v100/2020')
                     band_name = 'Map'
-                    
+                    scale = 10
                 elif processing_type == 'RGB':
                     collection = ee.ImageCollection('LANDSAT/LC08/C01/T1_TOA')
                     if request.image_date:
@@ -115,9 +123,20 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
                             ee.Date(date.strftime('%Y-%m-%d')).advance(1, 'day')
                         ).sort('CLOUD_COVER')
                     image = collection.first()
-                    # RGB bands
-                    rgb_bands = ['B4', 'B3', 'B2']  # Landsat 8 bands
-                    
+                    rgb_bands = ['B4', 'B3', 'B2']
+                    scale = 30
+                elif processing_type == 'OPEN BUILDINGS':
+                    # Use the Open Buildings dataset and select the building_height band
+                    collection = ee.ImageCollection('GOOGLE/Research/open-buildings-temporal/v1')
+                    filtered_col = collection.filterBounds(point)
+                    latest_image = filtered_col.sort('system:time_start', False).first()
+                    if latest_image is None:
+                        raise HTTPException(status_code=404, detail="No Open Buildings data found at this location.")
+                    latest_timestamp = latest_image.get('system:time_start')
+                    mosaic = filtered_col.filter(ee.Filter.eq('system:time_start', latest_timestamp)).mosaic()
+                    image = mosaic.select('building_height')
+                    band_name = 'building_height'
+                    scale = 4  # Open Buildings native resolution is 4m
                 elif processing_type in ['CO', 'NO2', 'CH4', 'SO2']:
                     # Gas concentrations
                     if processing_type == 'CO':
@@ -142,7 +161,7 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
                         )
                     
                     image = collection.select(band_name).median()
-                    
+                    scale = 7000  # Sentinel-5P native resolution
                 elif processing_type == 'ACTIVE_FIRE' or processing_type == 'ACTIVE FIRE':
                     collection = ee.ImageCollection('FIRMS')
                     if request.image_date:
@@ -153,7 +172,7 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
                         )
                     image = collection.select('T21').median()
                     band_name = 'T21'
-                    
+                    scale = 375
                 else:
                     raise HTTPException(status_code=400, 
                                       detail=f"Unsupported processing type: {processing_type}")
@@ -164,37 +183,45 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
             
             # Sample the pixel value at the point
             if processing_type == 'RGB':
-                # For RGB, sample Red, Green, Blue bands
                 def sample_rgb():
-                    rgb_bands = ['B4', 'B3', 'B2']  # Landsat 8 bands
-                    sample = image.select(rgb_bands).sample(point, 30).first()
-                    value_info = sample.getInfo()['properties']
-                    
-                    # Extract RGB values
-                    r_val = int(value_info.get('B4', 0) * 255)  # Scale to 0-255
+                    rgb_bands = ['B4', 'B3', 'B2']
+                    sample = image.select(rgb_bands).sample(point, scale).first()
+                    if sample is None:
+                        return None
+                    sample_info = sample.getInfo()
+                    if sample_info is None or 'properties' not in sample_info:
+                        return None
+                    value_info = sample_info['properties']
+                    r_val = int(value_info.get('B4', 0) * 255)
                     g_val = int(value_info.get('B3', 0) * 255)
                     b_val = int(value_info.get('B2', 0) * 255)
-                    
                     return {
                         'r': r_val,
                         'g': g_val,
                         'b': b_val
                     }
-                
                 value = await run_ee_operation(sample_rgb)
-                    
+                if value is None:
+                    raise HTTPException(status_code=404, detail="No RGB pixel data found at this location.")
             else:
-                # For single band, just get the value
                 def sample_band():
-                    sample = image.sample(point, 30).first()
-                    value_info = sample.getInfo()['properties']
+                    sample = image.sample(point, scale).first()
+                    if sample is None:
+                        return None
+                    sample_info = sample.getInfo()
+                    if sample_info is None or 'properties' not in sample_info:
+                        return None
+                    value_info = sample_info['properties']
                     return value_info.get(band_name, None)
-                
                 value = await run_ee_operation(sample_band)
-                
+                if value is None:
+                    raise HTTPException(status_code=404, detail=f"No {processing_type} pixel data found at this location.")
                 # Special handling for LULC (categorical)
-                if processing_type == 'LULC' and value is not None:
-                    value = int(value)  # Ensure integer for classification
+                if processing_type == 'LULC':
+                    value = int(value)
+                # Special handling for NDVI (scale to -1 to 1)
+                if processing_type == 'NDVI' and value is not None:
+                    value = float(value) / 10000.0  # MODIS NDVI scaling
             
             return value
         
@@ -217,4 +244,91 @@ async def get_pixel_value(request: PixelValueRequest = Body(...)):
         return {
             "success": False,
             "message": f"Failed to fetch pixel value: {str(e)}"
+        }
+
+@router.post("/histogram")
+async def get_histogram(request: HistogramRequest = Body(...)):
+    """Get a histogram of values for a given geometry and processing type."""
+    try:
+        if not EE_INITIALIZED:
+            success, error = await initialize_earth_engine(settings.ee_project_id)
+            if not success:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize Earth Engine: {error}")
+
+        # Parse geometry
+        try:
+            geom = ee.Geometry(request.geometry)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid geometry: {e}")
+
+        processing_type = request.processing_type.upper()
+        band_name = request.band_name
+        scale = request.scale or 250  # Default for NDVI
+        image = None
+
+        # Select image and band
+        if request.ee_collection_id:
+            collection = ee.ImageCollection(request.ee_collection_id)
+            if request.start_date and request.end_date:
+                collection = collection.filterDate(request.start_date, request.end_date)
+            image = collection.median()
+            if not band_name:
+                band_name = image.bandNames().getInfo()[0]
+        else:
+            if processing_type == 'NDVI':
+                collection = ee.ImageCollection('MODIS/006/MOD13Q1')
+                if request.start_date and request.end_date:
+                    collection = collection.filterDate(request.start_date, request.end_date)
+                image = collection.select('NDVI').median()
+                band_name = 'NDVI'
+                scale = 250
+            elif processing_type == 'LST':
+                collection = ee.ImageCollection('MODIS/006/MOD11A1')
+                if request.start_date and request.end_date:
+                    collection = collection.filterDate(request.start_date, request.end_date)
+                image = collection.select('LST_Day_1km').median()
+                image = image.multiply(0.02).subtract(273.15).rename('LST_Celsius')
+                band_name = 'LST_Celsius'
+                scale = 1000
+            elif processing_type == 'LULC':
+                image = ee.Image('ESA/WorldCover/v100/2020')
+                band_name = 'Map'
+                scale = 10
+            else:
+                raise HTTPException(status_code=400, detail=f"Unsupported processing type: {processing_type}")
+
+        if image is None or band_name is None:
+            raise HTTPException(status_code=404, detail="No image or band found for the given parameters")
+
+        # Compute histogram
+        def compute_hist():
+            reducer = ee.Reducer.histogram(maxBuckets=50)
+            result = image.select(band_name).reduceRegion(
+                reducer=reducer,
+                geometry=geom,
+                scale=scale,
+                maxPixels=1e9,
+                bestEffort=True
+            )
+            return result.get(band_name).getInfo()
+
+        hist = await run_ee_operation(compute_hist)
+        if not hist:
+            raise HTTPException(status_code=404, detail="No histogram data found for this area.")
+
+        # For NDVI, scale bucketMeans
+        if processing_type == 'NDVI' and 'bucketMeans' in hist:
+            hist['bucketMeans'] = [x / 10000.0 for x in hist['bucketMeans']]
+
+        return {
+            "success": True,
+            "histogram": hist
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.exception(f"Error in histogram endpoint: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Failed to fetch histogram: {str(e)}"
         }

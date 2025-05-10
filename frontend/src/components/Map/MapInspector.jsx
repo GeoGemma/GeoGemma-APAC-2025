@@ -14,6 +14,10 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import '../../styles/mapInspector.css';
+import axios from 'axios';
+import { createTimeSeriesAnalysis } from '../../services/api';
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://geogemma-backend-312711753493.us-central1.run.app';
 
 const MapInspector = ({ showNotification }) => {
   const { map, layers, selectedLayerId, selectLayer } = useMap();
@@ -21,10 +25,13 @@ const MapInspector = ({ showNotification }) => {
   
   const [isInspecting, setIsInspecting] = useState(false);
   const [inspectPoint, setInspectPoint] = useState(null);
-  const [activeTab, setActiveTab] = useState('values'); // 'values', 'chart', 'histogram'
+  const [activeTab, setActiveTab] = useState('values'); // 'values', 'histogram'
   const [isPinned, setIsPinned] = useState(false);
   const chartRef = useRef(null);
   const histogramRef = useRef(null);
+  const [histogramData, setHistogramData] = useState(null);
+  const [histogramLoading, setHistogramLoading] = useState(false);
+  const [histogramError, setHistogramError] = useState(null);
 
   // Get the active layer based on selectedLayerId
   const activeLayer = layers.find(layer => layer.id === selectedLayerId) || 
@@ -32,9 +39,7 @@ const MapInspector = ({ showNotification }) => {
 
   // Update charts when they become visible
   useEffect(() => {
-    if (activeTab === 'chart' && chartRef.current) {
-      renderTimeSeriesChart();
-    } else if (activeTab === 'histogram' && histogramRef.current) {
+    if (activeTab === 'histogram' && histogramRef.current) {
       renderHistogram();
     }
   }, [activeTab, activeLayer]);
@@ -99,199 +104,76 @@ const MapInspector = ({ showNotification }) => {
     }
   }, [isPinned, showNotification]);
   
-  // Render a time series chart
-  const renderTimeSeriesChart = useCallback(() => {
-    if (!chartRef.current || !activeLayer) return;
-    
-    // Get canvas context
-    const canvas = chartRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Set up canvas background
-    ctx.fillStyle = '#303134';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Generate data based on layer type
-    const data = generateTimeSeriesData(activeLayer.processing_type);
-    
-    // Draw chart
-    ctx.beginPath();
-    ctx.moveTo(20, data[0]);
-    
-    for (let i = 1; i < data.length; i++) {
-      ctx.lineTo(20 + (i * (canvas.width - 40) / (data.length - 1)), data[i]);
+  // Fetch real histogram data from backend
+  const fetchHistogramData = useCallback(async () => {
+    if (!activeLayer || !map) return;
+    setHistogramLoading(true);
+    setHistogramError(null);
+    setHistogramData(null);
+    try {
+      // Use current map bounds as geometry (GeoJSON Polygon)
+      const bounds = map.getBounds();
+      const geometry = {
+        type: 'Polygon',
+        coordinates: [[
+          [bounds.getWest(), bounds.getSouth()],
+          [bounds.getEast(), bounds.getSouth()],
+          [bounds.getEast(), bounds.getNorth()],
+          [bounds.getWest(), bounds.getNorth()],
+          [bounds.getWest(), bounds.getSouth()]
+        ]]
+      };
+      const response = await axios.post(`${API_BASE_URL}/api/histogram`, {
+        geometry,
+        processing_type: activeLayer.processing_type,
+        // Optionally add start_date, end_date, band_name, scale
+      });
+      if (response.data.success && response.data.histogram) {
+        setHistogramData(response.data.histogram);
+      } else {
+        setHistogramError(response.data.message || 'Failed to fetch histogram');
+      }
+    } catch (err) {
+      setHistogramError(err.message || 'Failed to fetch histogram');
+    } finally {
+      setHistogramLoading(false);
     }
-    
-    // Style and stroke the line
-    ctx.strokeStyle = getLayerColor(activeLayer.processing_type);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Add axis labels
-    ctx.fillStyle = '#9aa0a6';
-    ctx.font = '10px Arial';
-    ctx.fillText('Time', canvas.width / 2, canvas.height - 10);
-    ctx.save();
-    ctx.translate(10, canvas.height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Value', 0, 0);
-    ctx.restore();
-    
-    // Add title
-    ctx.fillStyle = '#e8eaed';
-    ctx.font = '12px Arial';
-    ctx.fillText(`Time Series - ${activeLayer.processing_type} at Selected Point`, canvas.width / 2 - 100, 15);
-  }, [activeLayer]);
-  
-  // Generate time series data based on layer type
-  const generateTimeSeriesData = (layerType) => {
-    const dataPoints = 24; // 24 points for the time series
-    const data = [];
-    
-    // Create deterministic but realistic patterns based on layer type
-    switch(layerType) {
-      case 'NDVI':
-        // Seasonal pattern for vegetation
-        for (let i = 0; i < dataPoints; i++) {
-          // Sine wave with annual cycle plus some noise
-          data.push(80 + Math.sin(i / (dataPoints / 2) * Math.PI) * 40 + (Math.random() * 10 - 5));
-        }
-        break;
-        
-      case 'LST':
-        // Temperature with seasonal variation
-        for (let i = 0; i < dataPoints; i++) {
-          // Cosine wave with annual cycle plus some noise
-          data.push(80 + Math.cos(i / (dataPoints / 2) * Math.PI) * 50 + (Math.random() * 10 - 5));
-        }
-        break;
-        
-      case 'SURFACE WATER':
-        // Water with seasonal variation and extreme events
-        for (let i = 0; i < dataPoints; i++) {
-          // Base seasonal pattern
-          let value = 120 - Math.sin(i / (dataPoints / 2) * Math.PI) * 30;
-          
-          // Add some "flood events"
-          if (i === 5 || i === 18) {
-            value = 50; // High water/flood event
-          }
-          data.push(value);
-        }
-        break;
-        
-      case 'LULC':
-        // Land cover doesn't change much over time (mostly static)
-        for (let i = 0; i < dataPoints; i++) {
-          data.push(100 + (Math.random() * 10 - 5));
-        }
-        break;
-        
-      case 'RGB':
-        // RGB pattern with gradual changes
-        for (let i = 0; i < dataPoints; i++) {
-          data.push(100 + Math.sin(i / (dataPoints / 4) * Math.PI) * 30 + (Math.random() * 10 - 5));
-        }
-        break;
-        
-      default:
-        // Default pattern
-        for (let i = 0; i < dataPoints; i++) {
-          data.push(100 + (Math.random() * 40 - 20));
-        }
+  }, [activeLayer, map]);
+
+  // Fetch histogram when tab is selected or layer changes
+  useEffect(() => {
+    if (activeTab === 'histogram') {
+      fetchHistogramData();
     }
-    
-    return data;
-  };
-  
+    // eslint-disable-next-line
+  }, [activeTab, activeLayer]);
+
   // Render a histogram
   const renderHistogram = useCallback(() => {
-    if (!histogramRef.current || !activeLayer) return;
-    
-    // Get canvas context
-    const canvas = histogramRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Set up canvas background
-    ctx.fillStyle = '#303134';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Generate data based on layer type
-    const data = generateHistogramData(activeLayer.processing_type);
-    const barCount = data.length;
-    const barWidth = (canvas.width - 40) / barCount;
-    const maxValue = Math.max(...data);
-    
-    // Draw bars
-    for (let i = 0; i < barCount; i++) {
-      const barHeight = (data[i] / maxValue) * (canvas.height - 40);
-      ctx.fillStyle = getLayerColor(activeLayer.processing_type);
-      ctx.fillRect(20 + i * barWidth, canvas.height - barHeight - 20, barWidth - 2, barHeight);
+    if (histogramLoading) {
+      return <div className="flex items-center justify-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-google-blue"></div></div>;
     }
-    
-    // Add axis labels
-    ctx.fillStyle = '#9aa0a6';
-    ctx.font = '10px Arial';
-    ctx.fillText('Value', canvas.width / 2, canvas.height - 5);
-    ctx.save();
-    ctx.translate(15, canvas.height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Frequency', 0, 0);
-    ctx.restore();
-    
-    // Add title
-    ctx.fillStyle = '#e8eaed';
-    ctx.font = '12px Arial';
-    ctx.fillText(`Histogram - ${activeLayer.processing_type} Area Distribution`, canvas.width / 2 - 120, 15);
-  }, [activeLayer]);
-  
-  // Generate histogram data based on layer type
-  const generateHistogramData = (layerType) => {
-    const binCount = 10;
-    const data = [];
-    
-    // Create realistic distributions based on layer type
-    switch(layerType) {
-      case 'NDVI':
-        // Bimodal distribution (vegetation and non-vegetation)
-        data.push(20, 15, 12, 8, 15, 25, 45, 30, 20, 15);
-        break;
-        
-      case 'LST':
-        // Normal distribution
-        data.push(5, 12, 20, 40, 60, 55, 38, 20, 12, 5);
-        break;
-        
-      case 'SURFACE WATER':
-        // Skewed distribution (mostly dry with some water)
-        data.push(70, 30, 20, 15, 10, 8, 6, 4, 3, 2);
-        break;
-        
-      case 'LULC':
-        // Discrete classes
-        data.push(35, 10, 25, 5, 15, 5, 30, 5, 15, 20);
-        break;
-        
-      case 'RGB':
-        // More uniform distribution
-        data.push(25, 30, 35, 30, 25, 30, 35, 30, 25, 20);
-        break;
-        
-      default:
-        // Random distribution
-        for (let i = 0; i < binCount; i++) {
-          data.push(Math.floor(Math.random() * 50) + 10);
-        }
+    if (histogramError) {
+      return <div className="text-google-red text-xs">{histogramError}</div>;
     }
-    
-    return data;
-  };
+    if (!histogramData) {
+      return <div className="text-google-grey-300 text-xs">No histogram data available.</div>;
+    }
+    // Use real histogram data
+    const { bucketMeans, histogram } = histogramData;
+    if (!bucketMeans || !histogram) {
+      return <div className="text-google-grey-300 text-xs">No histogram data available.</div>;
+    }
+    // Prepare data for chart
+    const maxValue = Math.max(...histogram);
+    return (
+      <div className="w-full h-48 flex items-end gap-1">
+        {bucketMeans.map((mean, i) => (
+          <div key={i} style={{ height: `${(histogram[i] / maxValue) * 100}%` }} className="flex-1 bg-google-green/70 rounded-t"></div>
+        ))}
+      </div>
+    );
+  }, [histogramData, histogramLoading, histogramError]);
   
   // Helper function to get color for layer type
   const getLayerColor = (type) => {
@@ -389,9 +271,12 @@ const MapInspector = ({ showNotification }) => {
     );
   };
   
-  // Render functions for different pixel value types
+  // Render the pixel value or a user-friendly message
   const renderPixelValue = (value) => {
-    if (!value) return <span>No data available</span>;
+    if (!value) return <div className="inspector-no-value">No value available.</div>;
+    if (value.message) {
+      return <div className="inspector-no-value">{value.message}</div>;
+    }
     
     // Add an indicator if using mock data
     const isMockData = value.isMock;
@@ -509,19 +394,6 @@ const MapInspector = ({ showNotification }) => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium relative ${
-                activeTab === 'chart' 
-                  ? 'text-google-blue' 
-                  : 'text-google-grey-200 hover:text-google-grey-100'
-              }`}
-              onClick={() => setActiveTab('chart')}
-            >
-              Time Series
-              {activeTab === 'chart' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-google-blue"></div>
-              )}
-            </button>
-            <button
-              className={`py-2 px-4 text-sm font-medium relative ${
                 activeTab === 'histogram' 
                   ? 'text-google-blue' 
                   : 'text-google-grey-200 hover:text-google-grey-100'
@@ -574,41 +446,6 @@ const MapInspector = ({ showNotification }) => {
             </div>
           )}
           
-          {/* Chart tab content */}
-          {activeTab === 'chart' && (
-            <div className="bg-google-bg-light rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <LineChart size={16} className="text-google-grey-300" />
-                  <h3 className="text-sm font-medium text-google-grey-100">
-                    Time Series Analysis
-                  </h3>
-                </div>
-                <button 
-                  className="text-xs flex items-center gap-1 text-google-grey-300 hover:text-google-grey-100"
-                  onClick={() => showNotification('Download feature coming soon', 'info')}
-                >
-                  <Download size={14} />
-                  <span>Export</span>
-                </button>
-              </div>
-              
-              <div>
-                <canvas 
-                  ref={chartRef} 
-                  width="300"
-                  height="200"
-                  className="w-full h-[200px] mt-2 bg-google-bg-dark/30 rounded-md overflow-hidden"
-                ></canvas>
-                <div className="mt-2 text-xs text-google-grey-300">
-                  <p className="text-center">
-                    Time series data showing temporal changes at the selected location.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          
           {/* Histogram tab content */}
           {activeTab === 'histogram' && (
             <div className="bg-google-bg-light rounded-lg p-3">
@@ -629,17 +466,7 @@ const MapInspector = ({ showNotification }) => {
               </div>
               
               <div>
-                <canvas 
-                  ref={histogramRef} 
-                  width="300"
-                  height="200"
-                  className="w-full h-[200px] mt-2 bg-google-bg-dark/30 rounded-md overflow-hidden"
-                ></canvas>
-                <div className="mt-2 text-xs text-google-grey-300">
-                  <p className="text-center">
-                    Histogram showing distribution of values across the area.
-                  </p>
-                </div>
+                {renderHistogram()}
               </div>
             </div>
           )}
