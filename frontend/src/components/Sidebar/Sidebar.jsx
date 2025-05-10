@@ -11,7 +11,9 @@ import {
   Download,        // Keep icon for display
   Shapes,          // New icon for GeoJSON
   Loader,
-  MapPin           // New icon for GIS Agent
+  MapPin,          // New icon for GIS Agent
+  Pencil,          // Add Pencil for rename
+  Trash2          // Add Trash2 for delete
 } from 'lucide-react'; // Ensure Shapes is imported
 import { chatWithGemini } from '../../services/geminiService'; // Keep chat logic
 import ChatInput from './ChatInput'; // Keep chat logic
@@ -27,6 +29,8 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [activeSection, setActiveSection] = useState('chat'); // 'chat' or 'gisagent'
   const messagesEndRef = useRef(null);
+  const [editingChatId, setEditingChatId] = useState(null); // Track which chat is being renamed
+  const [editingTitle, setEditingTitle] = useState('');     // Track the new title input
 
   // --- Chat logic (useEffect, addMessage, handleNewChat, handleSendMessage, selectChat) remains the same ---
   // Scroll to bottom of chat when messages change
@@ -254,6 +258,38 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     }
   };
 
+  // Handler to start renaming a chat
+  const handleRenameChat = (chat) => {
+    setEditingChatId(chat.id);
+    setEditingTitle(chat.title);
+  };
+
+  // Handler to save the new chat title
+  const handleRenameSave = (chatId) => {
+    const updatedHistory = chatHistory.map(chat =>
+      chat.id === chatId ? { ...chat, title: editingTitle } : chat
+    );
+    setChatHistory(updatedHistory);
+    setEditingChatId(null);
+    setEditingTitle('');
+  };
+
+  // Handler to cancel renaming
+  const handleRenameCancel = () => {
+    setEditingChatId(null);
+    setEditingTitle('');
+  };
+
+  // Handler to delete a chat
+  const handleDeleteChat = (chatId) => {
+    const updatedHistory = chatHistory.filter(chat => chat.id !== chatId);
+    setChatHistory(updatedHistory);
+    // If the deleted chat was active, clear messages
+    if (chatHistory.find(chat => chat.id === chatId)?.active) {
+      setMessages([]);
+    }
+  };
+
   return (
     <div className={`sidebar ${isOpen ? 'expanded' : 'collapsed'}`}>
       {isOpen ? (
@@ -310,11 +346,67 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
                           key={chat.id}
                           className={`chat-item ${chat.active ? 'active' : ''}`}
                           onClick={() => selectChat(chat.id)}
-                          title={chat.title} // Add tooltip
+                          title={chat.title}
+                          style={{ position: 'relative' }}
                         >
                           <MessageSquare size={14} />
-                          <span>{chat.title}</span>
-                          {/* Add delete/rename icons here if needed */}
+                          {editingChatId === chat.id ? (
+                            <>
+                              <input
+                                type="text"
+                                value={editingTitle}
+                                onChange={e => setEditingTitle(e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleRenameSave(chat.id);
+                                  if (e.key === 'Escape') handleRenameCancel();
+                                }}
+                                autoFocus
+                                style={{
+                                  maxWidth: 120,
+                                  marginRight: 4,
+                                  background: '#222',
+                                  color: '#e8eaed',
+                                  border: '1px solid #444',
+                                  borderRadius: 4,
+                                  padding: '2px 6px',
+                                  fontSize: 14
+                                }}
+                              />
+                              <button
+                                className="sidebar-tool"
+                                title="Save"
+                                onClick={e => { e.stopPropagation(); handleRenameSave(chat.id); }}
+                              >
+                                <Loader size={14} />
+                              </button>
+                              <button
+                                className="sidebar-tool"
+                                title="Cancel"
+                                onClick={e => { e.stopPropagation(); handleRenameCancel(); }}
+                              >
+                                ×
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ flex: 1, minWidth: 0, marginRight: 4 }}>{chat.title}</span>
+                              <button
+                                className="sidebar-tool"
+                                title="Rename chat"
+                                onClick={e => { e.stopPropagation(); handleRenameChat(chat); }}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                className="sidebar-tool"
+                                title="Delete chat"
+                                onClick={e => { e.stopPropagation(); handleDeleteChat(chat.id); }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
