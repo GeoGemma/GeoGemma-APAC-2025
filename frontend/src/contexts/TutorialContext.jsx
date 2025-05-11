@@ -1,5 +1,5 @@
 // src/contexts/TutorialContext.jsx
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../services/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -17,6 +17,7 @@ export function TutorialProvider({ children }) {
   const [isShowingTutorial, setIsShowingTutorial] = useState(false);
   const [currentTutorial, setCurrentTutorial] = useState(null);
   const { currentUser } = useAuth();
+  const prevUserRef = useRef(null);
 
   // Load tutorial state from Firestore for logged-in users
   useEffect(() => {
@@ -24,13 +25,23 @@ export function TutorialProvider({ children }) {
       // For testing: Get the forceShowTutorial flag from localStorage
       const forceShowTutorial = localStorage.getItem('forceShowTutorial') === 'true';
       
-      if (currentUser) {
+      // Only trigger on new sign-in
+      if (currentUser && !prevUserRef.current) {
         try {
           const tutorialDocRef = doc(db, "userPreferences", currentUser.uid);
           const docSnap = await getDoc(tutorialDocRef);
           
           if (docSnap.exists() && docSnap.data().tutorials && !forceShowTutorial) {
             setTutorialState(docSnap.data().tutorials);
+            // Check if all tutorials are completed
+            const allCompleted = Object.values(docSnap.data().tutorials).every(Boolean);
+            if (!allCompleted) {
+              setIsShowingTutorial(true);
+              setCurrentTutorial('welcome');
+            } else {
+              setIsShowingTutorial(false);
+              setCurrentTutorial(null);
+            }
           } else {
             // First-time user or forcing tutorial, show tutorials
             setIsShowingTutorial(true);
@@ -39,19 +50,14 @@ export function TutorialProvider({ children }) {
         } catch (error) {
           console.error("Error loading tutorial state:", error);
         }
-      } else {
-        // Even without a user, we can force the tutorial for testing
-        if (forceShowTutorial) {
-          setIsShowingTutorial(true);
-          setCurrentTutorial('welcome');
-        }
+      } else if (!currentUser) {
+        setIsShowingTutorial(false);
+        setCurrentTutorial(null);
       }
+      prevUserRef.current = currentUser;
     };
     
     loadTutorialState();
-    
-    // Set localStorage flag for development testing
-    localStorage.setItem('forceShowTutorial', 'true');
   }, [currentUser]);
 
   // Save tutorial state to Firestore

@@ -20,7 +20,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
   const justSubmittedRef = useRef(false);
   const recognitionRef = useRef(null);
   const { addLayer, addMarker, flyToLocation, clearMarkers } = useMap();
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
 
   const examplePromptCategories = [
     {
@@ -100,6 +100,16 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      if (currentUser === null) {
+        setShowLoginPopup(true);
+      } else {
+        setShowLoginPopup(false);
+      }
+    }
+  }, [currentUser, loading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -357,7 +367,7 @@ const PromptForm = ({ showNotification, showLoading, hideLoading }) => {
           </div>
         )}
       </div>
-      {showLoginPopup && (
+      {showLoginPopup && !loading && (
         <LoginPopup onClose={() => setShowLoginPopup(false)} />
       )}
     </>

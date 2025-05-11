@@ -14,7 +14,7 @@ const TopBar = ({ showNotification }) => {
         <img
           src="/geolong.png" // Make sure this path is correct
           alt="GeoGemma Logo"
-          className="w-40 object-contain mr-2" // Adjust width as needed
+          className="w-32 object-contain mr-1" // Reduced width and margin
         />
       </div>
 

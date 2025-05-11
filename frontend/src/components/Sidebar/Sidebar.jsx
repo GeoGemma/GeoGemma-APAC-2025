@@ -51,88 +51,19 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   useEffect(() => {
     const handlePromptSubmit = async (event) => {
       const { prompt, response } = event.detail;
-
-      // Ensure we're in the chat section
       setActiveSection('chat');
-
-      // Ensure a chat context exists or create one
-      if (chatHistory.length === 0 && (prompt || response)) {
-          // Create a new chat immediately and update state
-          const newChatId = `chat-${Date.now()}`;
-          const newChat = { id: newChatId, title: prompt ? prompt.substring(0, 25) : 'New conversation', active: true };
-          const updatedHistory = [{ ...newChat }, ...chatHistory.map(c => ({ ...c, active: false }))];
-
-          setChatHistory(updatedHistory);
-          setMessages([]); // Clear messages for the new chat
-
-          // Add welcome message for new chat
-          setTimeout(() => {
-              addMessage("Hello! Let's explore this topic.", "system");
-          }, 100);
-
-          // Now add the submitted prompt/response to the *newly* created chat context
-          // Need a slight delay to ensure state update potentially finishes
-          setTimeout(() => {
-              if (prompt) {
-                  addMessage(prompt, 'user');
-              }
-              if (response) {
-                  addMessage(response, 'system');
-              }
-              // Handle Gemini call if needed after adding prompt
-              if (prompt && !response) {
-                  callGemini(prompt);
-              }
-          }, 150);
-
-          return; // Stop further processing in this event handler instance
-      }
-
-      // Add to existing active chat
-      let currentMessages = [...messages]; // Get current messages
-
       if (prompt) {
-        const userMsg = { id: Date.now() + Math.random(), text: prompt, sender: 'user', timestamp: new Date().toISOString() };
-        currentMessages.push(userMsg);
-        setMessages(currentMessages); // Update state immediately
+        handleSendMessage(prompt);
       }
-
       if (response) {
-          // Add system response (potentially delayed slightly)
-          setTimeout(() => {
-              const sysMsg = { id: Date.now() + Math.random(), text: response, sender: 'system', timestamp: new Date().toISOString() };
-               // Update based on the state *when the timeout fires*
-              setMessages(prev => [...prev, sysMsg]);
-          }, 150);
-      }
-
-       // Process with Gemini only if prompt exists and no predefined response
-      if (prompt && !response) {
-          callGemini(prompt, currentMessages); // Pass current messages to Gemini context
+        addMessage(response, 'system');
       }
     };
-
-    const callGemini = async (prompt, contextMessages = messages) => {
-       setIsLoading(true);
-        try {
-            const geminiResponse = await chatWithGemini(prompt, contextMessages);
-            addMessage(geminiResponse, 'system');
-        } catch (error) {
-            console.error("Error getting response from Gemini:", error);
-            showNotification("Failed to get a response. Please try again.", "error");
-            addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
     window.addEventListener('prompt-submitted', handlePromptSubmit);
     return () => {
       window.removeEventListener('prompt-submitted', handlePromptSubmit);
     };
-    // Removed messages from dependency array here to avoid potential re-triggering issues, manage context inside handler
-  }, [showNotification, isOpen, chatHistory]); // Depend on isOpen and chatHistory to know context
-
+  }, [showNotification, isOpen, chatHistory]);
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -192,21 +123,42 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   };
 
   const handleSendMessage = async (message) => {
-     // Ensure there's an active chat, create if not
-     if (!chatHistory.some(chat => chat.active)) {
-         handleNewChat();
-         // Need a slight delay for state to update before sending message
-         setTimeout(() => handleSendMessage(message), 100);
-         return;
-     }
+    // Ensure there's an active chat, create if not
+    if (!chatHistory.some(chat => chat.active)) {
+      // Create a new chat entry
+      const newChatId = `chat-${Date.now()}`;
+      const newChat = {
+        id: newChatId,
+        title: message.substring(0, 30) + (message.length > 30 ? '...' : ''),
+        active: true
+      };
+      // Set all other chats to inactive
+      const updatedHistory = chatHistory.map(chat => ({ ...chat, active: false }));
+      setChatHistory([newChat, ...updatedHistory]);
+      setMessages([]);
+      setActiveSection('chat');
+      // Add user message and call Gemini after state updates
+      setTimeout(async () => {
+        addMessage(message, 'user');
+        setIsLoading(true);
+        try {
+          const response = await chatWithGemini(message, [{ text: message, sender: 'user' }]);
+          addMessage(response, 'system');
+        } catch (error) {
+          console.error("Error getting response from Gemini:", error);
+          showNotification("Failed to get a response. Please try again.", "error");
+          addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
+        } finally {
+          setIsLoading(false);
+        }
+      }, 100);
+      return;
+    }
     // Add user message
     addMessage(message, 'user');
-
-    // Process with Gemini
     setIsLoading(true);
     try {
-       // Pass the current message history to Gemini
-      const response = await chatWithGemini(message, [...messages, {text: message, sender: 'user'}]);
+      const response = await chatWithGemini(message, [...messages, { text: message, sender: 'user' }]);
       addMessage(response, 'system');
     } catch (error) {
       console.error("Error getting response from Gemini:", error);
@@ -313,10 +265,10 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
               <button 
                 className={`section-btn ${activeSection === 'gisagent' ? 'active' : ''}`}
                 onClick={() => toggleSection('gisagent')}
-                title="GIS Agent"
+                title="Earth Agent"
               >
                 <MapPin size={16} />
-                <span>GIS Agent</span>
+                <span>Earth Agent</span>
               </button>
             </div>
           </div>
@@ -531,7 +483,7 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
             {/* GIS Agent icon */}
             <button
               className={`sidebar-icon ${activeSection === 'gisagent' ? 'active' : ''}`}
-              title="GIS Agent"
+              title="Earth Agent"
               onClick={() => {
                 toggleSection('gisagent');
                 setIsOpen(true);

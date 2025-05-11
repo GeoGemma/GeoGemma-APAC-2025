@@ -26,9 +26,9 @@ const Layout = ({ children, sidebarExpanded, showNotification }) => {
         <div className="top-header-logo">
           <div className="gegemma-logo">
             {/* Consider using a higher-res logo if available */}
-            <img src="/geoshort.png" alt="GeoGemma Logo" className="logo-img h-6 w-auto" /> {/* Adjusted size slightly */}
+            <img src="/geoshort.png" alt="GeoGemma Logo" className="logo-img h-6 w-auto" /> 
             {/* Maybe remove the h1 if logo includes text, or adjust spacing */}
-            <h1 className="top-header-title text-lg ml-2">GeoGemma</h1>
+            <h1 className="top-header-title text-lg">GeoGemma</h1>
           </div>
         </div>
         <div className="top-header-actions"> {/* Icons on the right */}

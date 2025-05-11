@@ -443,7 +443,7 @@ const GISAgentUI = ({ showNotification }) => {
           welcomeShownRef.current = true;
           setTimeout(() => {
             addMessage(
-              "Welcome to the GIS AI Agent! I can help you with geographic information and sustainability analysis. How can I assist you today?",
+              "Welcome to the Earth Agent! I can help you with geographic information and sustainability analysis. How can I assist you today?",
               'assistant'
             );
           }, 500);
@@ -594,7 +594,7 @@ const GISAgentUI = ({ showNotification }) => {
       setIsReconnecting(false);
       setConnectionError("Unable to connect to GIS Agent. Is the server running?");
       showNotification(
-        "Unable to connect to GIS Agent. Please check if the server is running.",
+        "Unable to connect to Earth Agent. Please check if the server is running.",
         'error'
       );
       isConnectingRef.current = false;
@@ -839,7 +839,7 @@ const GISAgentUI = ({ showNotification }) => {
     // If not connected, try to reconnect
     if (!isConnected) {
       reconnectAttemptsRef.current = 0;
-      showNotification('Trying to connect to GIS Agent server...', 'info');
+      showNotification('Trying to connect to Earth Agent server...', 'info');
       connectWebSocket();
       
       // Store the message to send after connection
@@ -881,7 +881,7 @@ const GISAgentUI = ({ showNotification }) => {
       }
     } else {
       addMessage('Unable to send message: not connected to server.', 'system');
-      showNotification('Not connected to GIS Agent server', 'error');
+      showNotification('Not connected to Earth Agent server', 'error');
     }
   };
 
@@ -992,29 +992,34 @@ const GISAgentUI = ({ showNotification }) => {
 
   return (
     <div className="gisagent-container">
-      <div className="gisagent-header">
-        <div className="gisagent-title">
-          <MapPin size={18} />
-          <span>GIS Agent</span>
+      <div className="gisagent-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: 0, paddingBottom: 0}}>
+        <div style={{width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 4}}>
+          <div className="gisagent-title">
+            <MapPin size={18} />
+            <span>Earth Agent</span>
+          </div>
+          <div className="gisagent-controls">
+            <button 
+              className="clear-history-btn" 
+              onClick={clearHistory}
+              disabled={!isConnected || isWaitingForResponse || messages.length === 0}
+              title="Clear conversation history"
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button
+              className="retry-btn"
+              onClick={handleRetryConnection}
+              disabled={isReconnecting}
+              title="Force reconnect to server"
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
-        <div className="gisagent-controls">
-          <button 
-            className="clear-history-btn" 
-            onClick={clearHistory}
-            disabled={!isConnected || isWaitingForResponse || messages.length === 0}
-            title="Clear conversation history"
-          >
-            <RotateCcw size={16} />
-          </button>
-          <button
-            className="retry-btn"
-            onClick={handleRetryConnection}
-            disabled={isReconnecting}
-            title="Force reconnect to server"
-          >
-            <RefreshCw size={16} />
-          </button>
-          <div className={`connection-status ${isConnected ? (serverVerified ? 'connected' : 'warning') : isReconnecting ? 'reconnecting' : 'disconnected'}`}>
+        <div style={{width: '100%', marginTop: 2, marginBottom: 2}}>
+          <div className={`connection-status ${isConnected ? (serverVerified ? 'connected' : 'warning') : isReconnecting ? 'reconnecting' : 'disconnected'}`}
+            style={{marginLeft: 0, marginTop: 0}}>
             {isReconnecting ? 'Reconnecting...' : 
              isConnected ? (serverVerified ? 'Connected' : 'Connected (Verifying...)') : 
              'Disconnected'}
@@ -1037,7 +1042,7 @@ const GISAgentUI = ({ showNotification }) => {
             ) : (
               <>
                 <MapPin size={32} className="empty-icon" />
-                <h4>GIS Agent</h4>
+                <h4>Earth Agent</h4>
                 <p>Use this agent for geographic information and sustainability analysis</p>
               </>
             )}
@@ -1118,8 +1123,8 @@ const GISAgentUI = ({ showNotification }) => {
           placeholder={isConnected 
             ? "Ask about geographic data, sustainability analysis, or urban planning..." 
             : isReconnecting 
-              ? "Reconnecting to GIS Agent..." 
-              : "Connection to GIS Agent failed. Click to retry."}
+              ? "Reconnecting to Earth Agent..." 
+              : "Connection to Earth Agent failed. Click to retry."}
           disabled={!isConnected || isWaitingForResponse}
           rows={1}
           className="gisagent-input"

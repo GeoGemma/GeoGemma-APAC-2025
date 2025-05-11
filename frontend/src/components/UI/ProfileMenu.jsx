@@ -83,10 +83,6 @@ const ProfileMenu = () => {
                 <div className="profile-email">{currentUser.email}</div>
               </div>
             </div>
-            <div className="profile-plan">
-              <span className="plan-label">Free plan</span>
-              <button className="plan-upgrade">Upgrade</button>
-            </div>
           </div>
           
           <div className="profile-menu-items">
