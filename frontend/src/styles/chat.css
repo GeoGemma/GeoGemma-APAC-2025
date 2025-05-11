@@ -232,3 +232,12 @@
     background: transparent !important;
     border-radius: 6px;
   }
+
+  .avatar-user {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .avatar-user img {
+    background: transparent !important;
+    border-radius: 50%;
+  }

@@ -20,6 +20,7 @@ import ChatInput from './ChatInput'; // Keep chat logic
 import GISAgentUI from './GISAgentUI'; // New GIS Agent UI component
 import '../../styles/sidebar.css';
 import '../../styles/chat.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Removed toggleTimeSeries, toggleComparison from props as they are no longer needed
 const Sidebar = ({ showNotification, onToggleSidebar }) => {
@@ -31,6 +32,8 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   const messagesEndRef = useRef(null);
   const [editingChatId, setEditingChatId] = useState(null); // Track which chat is being renamed
   const [editingTitle, setEditingTitle] = useState('');     // Track the new title input
+  const [mainPromptHistory, setMainPromptHistory] = useState([]); // Store all main prompt/output pairs
+  const { currentUser } = useAuth();
 
   // --- Chat logic (useEffect, addMessage, handleNewChat, handleSendMessage, selectChat) remains the same ---
   // Scroll to bottom of chat when messages change
@@ -52,11 +55,11 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     const handlePromptSubmit = async (event) => {
       const { prompt, response } = event.detail;
       setActiveSection('chat');
-      if (prompt) {
-        handleSendMessage(prompt);
-      }
-      if (response) {
-        addMessage(response, 'system');
+      if (prompt || response) {
+        setMainPromptHistory(prev => [
+          ...prev,
+          { prompt: prompt || null, output: response || null }
+        ]);
       }
     };
     window.addEventListener('prompt-submitted', handlePromptSubmit);
@@ -123,42 +126,43 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
   };
 
   const handleSendMessage = async (message) => {
-    // Ensure there's an active chat, create if not
-    if (!chatHistory.some(chat => chat.active)) {
-      // Create a new chat entry
-      const newChatId = `chat-${Date.now()}`;
-      const newChat = {
-        id: newChatId,
-        title: message.substring(0, 30) + (message.length > 30 ? '...' : ''),
-        active: true
-      };
-      // Set all other chats to inactive
-      const updatedHistory = chatHistory.map(chat => ({ ...chat, active: false }));
-      setChatHistory([newChat, ...updatedHistory]);
-      setMessages([]);
-      setActiveSection('chat');
-      // Add user message and call Gemini after state updates
-      setTimeout(async () => {
-        addMessage(message, 'user');
-        setIsLoading(true);
-        try {
-          const response = await chatWithGemini(message, [{ text: message, sender: 'user' }]);
-          addMessage(response, 'system');
-        } catch (error) {
-          console.error("Error getting response from Gemini:", error);
-          showNotification("Failed to get a response. Please try again.", "error");
-          addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
-        } finally {
-          setIsLoading(false);
-        }
-      }, 100);
+    if (activeSection !== 'chat') {
+      // For Earth Agent, keep normal behavior
+      addMessage(message, 'user');
+      setIsLoading(true);
+      try {
+        const response = await chatWithGemini(message, [...messages, { text: message, sender: 'user' }]);
+        addMessage(response, 'system');
+      } catch (error) {
+        console.error("Error getting response from Gemini:", error);
+        showNotification("Failed to get a response. Please try again.", "error");
+        addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
-    // Add user message
+    // --- NEW: Prepend all main prompt/output pairs as context ---
+    let contextMessages = [...messages, { text: message, sender: 'user' }];
+    if (mainPromptHistory.length > 0) {
+      // Add all main prompt/output pairs as system context
+      const contextPairs = mainPromptHistory
+        .filter(pair => pair.prompt || pair.output)
+        .map(pair => [
+          pair.prompt ? { text: `Main prompt submitted: ${pair.prompt}`, sender: 'system' } : null,
+          pair.output ? { text: `Main prompt output: ${pair.output}`, sender: 'system' } : null
+        ])
+        .flat()
+        .filter(Boolean);
+      contextMessages = [
+        ...contextPairs,
+        ...contextMessages
+      ];
+    }
     addMessage(message, 'user');
     setIsLoading(true);
     try {
-      const response = await chatWithGemini(message, [...messages, { text: message, sender: 'user' }]);
+      const response = await chatWithGemini(message, contextMessages);
       addMessage(response, 'system');
     } catch (error) {
       console.error("Error getting response from Gemini:", error);
@@ -166,6 +170,7 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
       addMessage("I'm sorry, I'm having trouble connecting right now. Please try again in a moment.", "system");
     } finally {
       setIsLoading(false);
+      // Do NOT clear mainPromptHistory; keep accumulating for the session
     }
   };
 
@@ -240,6 +245,18 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
     if (chatHistory.find(chat => chat.id === chatId)?.active) {
       setMessages([]);
     }
+  };
+
+  // Helper to get user initials
+  const getUserInitials = () => {
+    if (!currentUser) return 'U';
+    if (currentUser.displayName) {
+      return currentUser.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+    }
+    if (currentUser.email) {
+      return currentUser.email[0].toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -386,8 +403,14 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
                             className={`chat-message ${message.sender === 'user' ? 'chat-message-user' : 'chat-message-system'}`}
                             >
                             <div className={`message-avatar ${message.sender === 'user' ? 'avatar-user' : 'avatar-system'}`}>
-                                {/* Show geoshort logo for assistant/system, 'U' for user */}
-                                {message.sender === 'user' ? 'U' : (
+                                {/* Show user profile image/initials for user, geoshort logo for assistant/system */}
+                                {message.sender === 'user' ? (
+                                  currentUser && currentUser.photoURL ? (
+                                    <img src={currentUser.photoURL} alt="User" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                                  ) : (
+                                    getUserInitials()
+                                  )
+                                ) : (
                                   <img src="/geoshort.png" alt="GeoGemma Logo" style={{ width: 24, height: 24, borderRadius: 4 }} />
                                 )}
                             </div>
