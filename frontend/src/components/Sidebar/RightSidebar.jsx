@@ -240,14 +240,6 @@ const RightSidebar = ({ showNotification }) => {
             >
               <Maximize size={20} />
             </button>
-            
-            <button 
-              className="sidebar-icon-btn"
-              onClick={handleShare}
-              title="Share"
-            >
-              <Link size={20} />
-            </button>
           </div>
         </div>
       )}

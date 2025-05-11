@@ -223,3 +223,12 @@
       transform: translateY(0);
     }
   }
+
+  .avatar-system {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .avatar-system img {
+    background: transparent !important;
+    border-radius: 6px;
+  }

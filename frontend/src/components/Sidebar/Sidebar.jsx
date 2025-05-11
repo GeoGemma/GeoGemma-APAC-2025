@@ -386,8 +386,10 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
                             className={`chat-message ${message.sender === 'user' ? 'chat-message-user' : 'chat-message-system'}`}
                             >
                             <div className={`message-avatar ${message.sender === 'user' ? 'avatar-user' : 'avatar-system'}`}>
-                                {/* Placeholder initials or icons */}
-                                {message.sender === 'user' ? 'U' : 'G'}
+                                {/* Show geoshort logo for assistant/system, 'U' for user */}
+                                {message.sender === 'user' ? 'U' : (
+                                  <img src="/geoshort.png" alt="GeoGemma Logo" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                                )}
                             </div>
                             <div className="message-content">
                                 {/* Basic markdown rendering could be added here */}
@@ -397,7 +399,9 @@ const Sidebar = ({ showNotification, onToggleSidebar }) => {
                         ))}
                         {isLoading && (
                             <div className="chat-message chat-message-system">
-                            <div className="message-avatar avatar-system">G</div>
+                            <div className="message-avatar avatar-system">
+                              <img src="/geoshort.png" alt="GeoGemma Logo" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                            </div>
                             <div className="message-content">
                                 <div className="typing-indicator">
                                     {/* Using Loader icon */}

@@ -22,7 +22,7 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Message Gemini..."
+          placeholder="Message GeoGemma..."
           className="chat-input"
           disabled={isLoading}
         />
