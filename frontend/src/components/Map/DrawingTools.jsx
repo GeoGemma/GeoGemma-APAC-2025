@@ -1171,7 +1171,7 @@ const DrawingTools = ({ showNotification }) => {
   };
 
   return (
-    <div className="drawing-tools-control" style={{ position: 'absolute', top: '230px', left: '10px', zIndex: 11 }}>
+    <div className="drawing-tools-control" style={{ position: 'absolute', top: '215px', left: '5px', zIndex: 11 }}>
       <div className="relative">
         {/* Main toggle button - always visible */}
         <button 

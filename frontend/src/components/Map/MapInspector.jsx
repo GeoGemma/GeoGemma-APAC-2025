@@ -331,28 +331,21 @@ const MapInspector = ({ showNotification }) => {
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex space-x-2">
-          <button
-            onClick={toggleInspect}
-            className={`flex items-center justify-center p-2 rounded-md ${
-              isInspecting ? 'bg-google-blue/20 text-google-blue' : 'hover:bg-google-bg-lighter text-google-grey-200'
-            }`}
-            title={isInspecting ? "Stop inspecting" : "Inspect pixel values"}
-          >
-            <Crosshair size={18} />
-          </button>
-          
-          {inspectPoint && (
+        <div className="w-full flex justify-center">
+          <div className="flex flex-col items-center space-y-1 mx-auto">
             <button
-              onClick={togglePin}
-              className={`flex items-center justify-center p-2 rounded-md ${
-                isPinned ? 'bg-google-yellow/20 text-google-yellow' : 'hover:bg-google-bg-lighter text-google-grey-200'
-              }`}
-              title={isPinned ? "Unpin inspection point" : "Pin inspection point"}
+              onClick={toggleInspect}
+              className={`transition-all flex items-center gap-2 px-4 py-2 rounded-full shadow-lg border border-google-bg-light/30
+                ${isInspecting ? 'bg-google-blue/10 text-google-blue ring-2 ring-google-blue/30' : 'bg-google-bg-light/60 text-google-grey-200 hover:bg-google-bg-lighter hover:text-google-blue hover:scale-105'}
+              `}
+              title={isInspecting ? "Stop inspecting" : "Inspect pixel values"}
+              aria-label={isInspecting ? "Stop inspecting" : "Inspect pixel values"}
+              style={{ transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)' }}
             >
-              {isPinned ? <Pin size={18} /> : <PinOff size={18} />}
+              <Crosshair size={22} />
+              <span className="font-medium text-sm">Inspect</span>
             </button>
-          )}
+          </div>
         </div>
         
         {inspectPoint && (
