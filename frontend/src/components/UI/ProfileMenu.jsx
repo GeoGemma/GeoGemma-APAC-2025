@@ -1,7 +1,7 @@
 // src/components/UI/ProfileMenu.jsx
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, Settings, HelpCircle, Download, ChevronRight } from 'lucide-react';
+import { LogOut, Settings, HelpCircle, Download, ChevronRight, Info } from 'lucide-react';
 import '../../styles/profileMenu.css';
 
 const ProfileMenu = () => {
@@ -37,6 +37,21 @@ const ProfileMenu = () => {
       setIsOpen(false);
     } catch (error) {
       console.error('Error logging out:', error);
+    }
+  };
+
+  // Show about notification
+  const handleAbout = () => {
+    if (window && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          message: 'GeoGemma - A Google Research Project',
+          type: 'info',
+          duration: 4000
+        }
+      }));
+    } else {
+      alert('GeoGemma - A Google Research Project');
     }
   };
 
@@ -100,6 +115,11 @@ const ProfileMenu = () => {
               <Download size={18} />
               <span>Download data</span>
               <ChevronRight size={16} className="menu-item-arrow" />
+            </button>
+            
+            <button className="profile-menu-item" onClick={handleAbout}>
+              <Info size={18} />
+              <span>About</span>
             </button>
             
             <div className="profile-divider"></div>

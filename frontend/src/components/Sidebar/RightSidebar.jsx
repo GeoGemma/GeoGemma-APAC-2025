@@ -50,8 +50,7 @@ const RightSidebar = ({ showNotification }) => {
 
   const handleClearLayers = async () => {
     try {
-      await clearLayersApi();
-      clearLayers();
+      await clearLayers(); // This will clear both map and Firestore layers for the user
       setSelectedLayerId(null); // Clear selection when all layers are removed
       showNotification('All layers cleared successfully', 'success');
     } catch (error) {

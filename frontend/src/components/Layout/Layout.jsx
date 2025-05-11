@@ -36,44 +36,18 @@ const Layout = ({ children, sidebarExpanded, showNotification }) => {
           {/* --- NEW Dataset Explorer Button --- */}
           <button>
           <a
-          href="http://127.0.0.1:5000/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-5 py-2 bg-google-bg-light/70 text-white rounded-md hover:bg-google-bg-light/90 transition-colors border border-google-bg-light/30"
-          title="Open Dataset Explorer"
-          style={{ borderRadius: '10px' }}
-        >
-          Dataset Explorer
-        </a>
+            href="http://127.0.0.1:5000/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 mr-2 px-5 py-2 bg-google-bg-light text-white font-medium rounded-md border border-google-bg-light/30 hover:bg-google-bg-light/90 transition-colors focus:outline-none focus:ring-2 focus:ring-google-blue/40 focus:ring-offset-2 focus:ring-offset-google-bg text-base md:text-sm whitespace-nowrap"
+            title="Open Dataset Explorer"
+            style={{ borderRadius: '8px', fontWeight: 500, fontSize: '1.1rem', letterSpacing: 0.1 }}
+          >
+            <LayoutGrid size={18} className="mr-1" />
+            Dataset Explorer
+          </a>
           </button>
           {/* --- END NEW Button --- */}
-
-          {/* Settings Button */}
-          <button
-            className="top-header-button"
-            title="Settings"
-            onClick={() => showNotification && showNotification('Settings will be available soon', 'info')}
-          >
-            <Settings size={20} />
-          </button>
-
-          {/* Help Button */}
-          <button
-            className="top-header-button"
-            title="Help"
-            onClick={() => showNotification && showNotification('Help documentation will be available soon', 'info')}
-          >
-            <HelpCircle size={20} />
-          </button>
-
-          {/* About Button */}
-          <button
-            className="top-header-button"
-            title="About"
-            onClick={() => showNotification && showNotification('GeoGemma - A Google Research Project', 'info')}
-          >
-            <Info size={20} />
-          </button>
 
           {/* Profile Menu component */}
           <ProfileMenu />

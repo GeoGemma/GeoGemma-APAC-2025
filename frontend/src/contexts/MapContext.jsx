@@ -428,36 +428,29 @@ export function MapProvider({ children }) {
     }
   };
 
-  const clearLayers = () => {
+  const clearLayers = async () => {
     if (!map) return;
-    
     // Remove all layers from the map
     layers.forEach(layer => {
       const layerId = `ee-layer-${layer.id}`;
       const sourceId = `ee-source-${layer.id}`;
-      
       if (map.getLayer(layerId)) {
         map.removeLayer(layerId);
       }
-      
       if (map.getSource(sourceId)) {
         map.removeSource(sourceId);
       }
     });
-
     setLayers([]);
     clearMarkers();
-    
     // Clear layers from Firestore if the user is authenticated
     if (currentUser && currentUser.uid) {
       try {
-        clearUserLayers(currentUser.uid)
-          .then(response => {
-            console.log('All layers cleared from Firestore');
-          })
-          .catch(error => {
-            console.error('Error clearing layers from Firestore:', error);
-          });
+        // Permanently delete each layer, like the individual delete button
+        for (const layer of layers) {
+          await deleteMapLayer(currentUser.uid, layer.id);
+        }
+        await clearUserLayers(currentUser.uid); // Optionally clear any remaining
       } catch (error) {
         console.error('Error calling clearUserLayers:', error);
       }

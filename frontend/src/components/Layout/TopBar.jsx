@@ -36,24 +36,6 @@ const TopBar = ({ showNotification }) => {
         </button>
         {/* --- END NEW Button --- */}
 
-        {/* Existing Settings Button */}
-        <button
-          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
-          onClick={() => showNotification('Settings will be available soon', 'info')}
-          title="Settings"
-        >
-          <Settings size={18} />
-        </button>
-
-        {/* Existing Help Button */}
-        <button
-          className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
-          onClick={() => showNotification('Help documentation will be available soon', 'info')}
-          title="Help"
-        >
-          <HelpCircle size={18} />
-        </button>
-
         {/* Existing Info Button */}
         <button
           className="p-1.5 text-google-grey-300 hover:text-white rounded-full hover:bg-google-bg-light/40 transition-colors"
