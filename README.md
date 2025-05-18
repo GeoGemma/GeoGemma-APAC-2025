@@ -1,6 +1,6 @@
-# GeoGemma: Earth Observation with Google Earth Engine & Gemma
+# <img src="frontend/public/geolong.png" alt="GeoGemma Logo" width="400"/>
 
-![GeoGemma Logo](public/geoshort.png)
+# GeoGemma: Earth Observation with Google Earth Engine & Gemma
 
 **GeoGemma** is an innovative Earth observation application that combines Google Earth Engine's powerful imagery analysis with Google Gemini's conversational AI. It enables users to explore satellite imagery, analyze geospatial data, and extract insights through natural language prompts.
 
