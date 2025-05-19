@@ -93,7 +93,7 @@
 
 ### Basic Queries
 
-- "Show RGB imagery of Tokyo from Landsat 8"
+- "Show satellite imagery of Tokyo from January 2025"
 - "NDVI in Amazon rainforest for 2023"
 - "Surface water in Amsterdam"
 - "Land use classification for Berlin"
