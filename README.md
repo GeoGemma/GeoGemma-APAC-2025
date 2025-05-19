@@ -34,7 +34,7 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/geogemma.git
+   https://github.com/GeoGemma/GeoGemma-APAC-2025.git
    cd geogemma
    ```
 
@@ -98,13 +98,8 @@
 - "Land use classification for Berlin"
 - "Land surface temperature in Rio de Janeiro for 2020"
 - "Building heights in New York City"
-
-### Advanced Queries
-
-- "Compare NDVI in California between 2018 and 2023"
-- "Time series of surface water in Lake Mead from 2000 to 2023"
 - "LST changes in Phoenix during summer months"
-- "Vegetation loss in the Amazon from 2015 to 2022"
+
 
 ## 🏗️ Project Architecture
 
