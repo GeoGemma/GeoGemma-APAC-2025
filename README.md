@@ -206,7 +206,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgements
 
 - Google Earth Engine for satellite imagery and analysis capabilities
-- Google Gemini for the conversational AI component
+- Google Gemma/Gemini for the conversational AI components and GeoAI Image retrival
 - MapLibre GL JS for the mapping visualization
 - The open-source community for various libraries and tools used in this project
 
