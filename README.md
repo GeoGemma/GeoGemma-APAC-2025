@@ -2,7 +2,7 @@
 
 # GeoGemma: Earth Observation with Google Earth Engine & Gemma
 
-**GeoGemma** is an innovative Earth observation application that combines Google Earth Engine's powerful imagery analysis with Google Gemini's conversational AI. It enables users to explore satellite imagery, analyze geospatial data, and extract insights through natural language prompts.
+**GeoGemma** is an innovative Earth observation application that combines Google Earth Engine's powerful imagery analysis with OpenLLM Gemma. It enables users to explore satellite imagery, analyze geospatial data, and extract insights through natural language prompts.
 
 ## 📍 Features
 
@@ -14,12 +14,13 @@
   - Land Use/Land Cover Classification (LULC)
   - Land Surface Temperature (LST)
   - Open Buildings Dataset
-- **Time Series Analysis**: Track changes over time for any supported data type
-- **Comparison Analysis**: Compare imagery between different dates
 - **Measurement Tools**: Calculate distances on the map
 - **Layer Management**: Control opacity and visibility of multiple layers
 - **Detailed Metadata**: Access comprehensive information about each layer
-- **AI Assistant Chat**: Discuss Earth science topics with the embedded Gemini AI
+- **AI Assistant Chat**: Discuss Earth science topics with the embedded GeoGemma chat feature
+- **Earth Agent**: Try out one of the first Geospatial MCP AI Agent connected to multiple EO APIs, powered by Gemini
+- **Time Series Analysis**: Track changes over time for any supported data type
+- **Comparison Analysis**: Compare imagery between different dates
 
 ## 🚀 Getting Started
 
@@ -28,7 +29,7 @@
 - Node.js (v18 or later)
 - Python 3.8+
 - Google Earth Engine account with access to the Earth Engine API
-- Google Gemini API key
+- Google Gemma/Gemini API key
 
 ### Environment Setup
 
@@ -159,7 +160,7 @@ geogemma/
 ### Frontend
 - **React**: UI library
 - **MapLibre GL JS**: Interactive mapping
-- **Google Generative AI SDK**: Gemini integration
+- **Google Generative AI SDK**: Gemma/Gemini integration
 - **TailwindCSS**: Styling
 - **Vite**: Build tool and development server
 
