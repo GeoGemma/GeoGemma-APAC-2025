@@ -157,6 +157,7 @@ geogemma/
 ├── vite.config.js          # Vite configuration
 └── README.md               # Project documentation
 ```
+<img src="architecture diagram.png" alt="architecture diagram" width="100%"/>
 
 ## 🛠️ Key Technologies
 
