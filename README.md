@@ -86,6 +86,8 @@
 
 3. Open your browser and navigate to `http://localhost:5173`
 
+<img src="GeoGemma frontend.png" alt="GeoGemma frontend" width="100%"/>
+
 ## 🔍 Usage Examples
 
 ### Basic Queries
