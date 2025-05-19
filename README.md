@@ -1,4 +1,4 @@
-# <img src="frontend/public/geolong.png" alt="GeoGemma Logo" width="400"/>
+<img src="GeoGemma-Banner.png" alt="GeoGemma Banner" width="100%"/>
 
 # GeoGemma: Earth Observation with Google Earth Engine & Gemma
 
