@@ -2,7 +2,7 @@
 
 # GeoGemma: Earth Observation with Google Earth Engine & Gemma
 
-**GeoGemma** is an innovative Earth observation application that combines Google Earth Engine's powerful imagery analysis with OpenLLM Gemma. It enables users to explore satellite imagery, analyze geospatial data, and extract insights through natural language prompts.
+**GeoGemma** is an innovative Earth observation application that combines Google Earth Engine's powerful imagery analysis with OpenLLM Gemma. It enables users to explore satellite imagery, analyze geospatial data, and extract insights through natural language prompts. This Solution is built to validate a Google Funded Research on GeoAI by the students of GDG on Campus Institute of Space Technology, Islamabad, Pakistan. 
 
 ## 📍 Features
 
