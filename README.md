@@ -6,10 +6,12 @@
 
 ## 📍 Features
 GeoGemma supports the analysis of planetary-level geospatial data for the whole globe based on natural language prompts, with its custom-designed modules which include Normalized Difference Vegetation Index (NDVI), historical and latest satellite image view, Land Use/Land Cover Classification (LULC), surface water analysis, land surface temperature, GHGs mapping, open buildings display, flood mapping, forest cover and loss monitoring, and active fire monitoring both historically and in near real-time. These modules can be extended up to 100+ or more, based on industry usage, making GeoGemma scalable and extendable for applications across a wide range of sectors such as agriculture, hydrology, disaster monitoring, air quality monitoring, mining, and climate monitoring—making this product one of its kind.
+
 **Example queries** include:
 - Show NDVI in Paris for 2022
 - Visualize the flood water of Daharki, Sindh for August 2024
 - Give me the latest satellite image of Manila from Sentinel-2 or Landsat 8.
+
 These are not the only supported queries—GeoGemma allows a wide range of features through a modern UI that provides an interactive experience for users.
 
 **Frontend tools for interaction:**
@@ -19,8 +21,11 @@ These are not the only supported queries—GeoGemma allows a wide range of featu
 - Detailed Metadata: Visualize map legends, value guides, and metadata including requested date, acquisition date, updated date, cloud cover, spatial resolution, bands, etc., along with detailed statistics like minimum, mean, maximum, and standard deviation
 
 **Assistance tools:**
-**AI Assistant Chat**: Chat with GeoGemma, which helps in analysis interpretation and guidance for the next prompt; discuss Earth science topics with the embedded GeoGemma chat feature
-**Earth Agent:** Try out one of the first geospatial MCP AI agents connected to multiple EO APIs like NASA, USGS, and Copernicus, powered by Gemini, to stay informed about updated climatic events in a selected area
+
+**AI Assistant Chat**: Chat with GeoGemma, which helps in analysis interpretation and guidance for the next prompt; discuss Earth science topics with the embedded GeoGemma chat feature.
+
+**Earth Agent:** Try out one of the first geospatial MCP AI agents connected to multiple EO APIs like NASA, USGS, and Copernicus, powered by Gemini, to stay informed about updated climatic events in a selected area.
+
 **Comparison Analysis:** Compare imagery between different dates to detect changes for informed decision-making.
 
 ## 🚀 Getting Started
