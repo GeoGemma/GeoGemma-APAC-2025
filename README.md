@@ -7,10 +7,11 @@
 ## 📍 Features
 GeoGemma supports the analysis of planetary-level geospatial data for the whole globe based on natural language prompts, with its custom-designed modules which include Normalized Difference Vegetation Index (NDVI), historical and latest satellite image view, Land Use/Land Cover Classification (LULC), surface water analysis, land surface temperature, GHGs mapping, open buildings display, flood mapping, forest cover and loss monitoring, and active fire monitoring both historically and in near real-time. These modules can be extended up to 100+ or more, based on industry usage, making GeoGemma scalable and extendable for applications across a wide range of sectors such as agriculture, hydrology, disaster monitoring, air quality monitoring, mining, and climate monitoring—making this product one of its kind.
 
-**Example queries** include:
-- Show NDVI in Paris for 2022
-- Visualize the flood water of Daharki, Sindh for August 2024
+**Example queries** to test out:
 - Give me the latest satellite image of Manila from Sentinel-2 or Landsat 8.
+- Show me ndvi in Amazon rainforest for year 2023.
+- Display the thermal variations in dubai desert for year 2001.
+- Visualize the flood water of Daharki, Sindh for August 2024.
 
 These are not the only supported queries—GeoGemma allows a wide range of features through a modern UI that provides an interactive experience for users.
 
@@ -93,19 +94,9 @@ These are not the only supported queries—GeoGemma allows a wide range of featu
 
 3. Open your browser and navigate to `http://localhost:5173`
 
+The frontend would look something like this, with the sample prompt applied: **"Display the thermal variations in Dubai desert for the year 2001."**
+
 <img src="GeoGemma frontend.png" alt="GeoGemma frontend" width="100%"/>
-
-## 🔍 Usage Examples
-
-### Basic Queries
-
-- "Show satellite imagery of Tokyo from January 2025"
-- "NDVI in Amazon rainforest for 2023"
-- "Surface water in Amsterdam"
-- "Land use classification for Berlin"
-- "Land surface temperature in Rio de Janeiro for 2020"
-- "Building heights in New York City"
-- "LST changes in Phoenix during summer months"
 
 
 ## 🏗️ Project Architecture
@@ -125,10 +116,12 @@ These are not the only supported queries—GeoGemma allows a wide range of featu
 - **Earth Engine Integration**: Processes and serves Earth Engine imagery
 - **API Endpoints**:
   - `/api/analyze`: Natural language prompt analysis
-  - `/api/time-series`: Time series generation
-  - `/api/comparison`: Date comparison analysis
+  - `/api/metadata`: MetaData extraction
+  - `/api/geometry`: Admin boundary extraction at different levels for the location.
   - `/api/layers`: Layer management
-- **Prompt Analysis**: Uses LLM to extract geospatial parameters from natural language
+- **Prompt Analysis**: The Gemma model is configured with prompt engineering instructions to steer its behavior in extracting the analysis type, location, and date range from the user's prompt. These variables are then passed in JSON format to Earth Engine (EE) modules, where the desired function is executed by Google Earth Engine (GEE), and the resulting tile URL is generated and rendered on the frontend.The sample architecture chart visualizes the workflow.
+
+<img src="architecture diagram.png" alt="architecture diagram" width="100%"/>
 
 ## 📁 Project Structure
 
@@ -159,7 +152,7 @@ geogemma/
 ├── vite.config.js          # Vite configuration
 └── README.md               # Project documentation
 ```
-<img src="architecture diagram.png" alt="architecture diagram" width="100%"/>
+
 
 ## 🛠️ Key Technologies
 
