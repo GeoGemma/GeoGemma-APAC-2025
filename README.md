@@ -188,27 +188,6 @@ The application requires authentication with Google Earth Engine:
 3. Set the `EE_PROJECT_ID` environment variable
 4. Use `earthengine authenticate` or provide service account credentials
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgements
-
-- Google Research & Google DeepMind under the Gemma Academic Program. 
-- Google Earth Engine for satellite imagery and analysis capabilities
-- Google Gemma/Gemini for the conversational AI components and GeoAI Image retrival
-- MapLibre GL JS for the mapping visualization
-- The open-source community for various libraries and tools used in this project
 
 ## Backend Architecture
 
@@ -278,9 +257,24 @@ docker-compose up
 
 API documentation is available at `/api/docs` when the application is running.
 
-## Contributing
+## 🤝 Contributing
 
-1. Follow the modular architecture
-2. Add comprehensive docstrings
-3. Use type hints
-4. Include tests for new functionality
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgements
+
+- Google Research & Google DeepMind under the Gemma Academic Program. 
+- Google Earth Engine for satellite imagery and analysis capabilities
+- Google Gemma/Gemini for the conversational AI components and GeoAI Image retrival
+- MapLibre GL JS for the mapping visualization
+- The open-source community for various libraries and tools used in this project
