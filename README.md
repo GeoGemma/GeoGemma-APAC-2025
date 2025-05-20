@@ -109,9 +109,9 @@
 - **Context API**: MapContext for global state management
 - **Components**:
   - Map visualization using MapLibre GL JS
-  - Chat interface with Google Gemini integration
-  - Analysis tools for time series and comparisons
+  - Chat interface with Gemma/Gemini (Earth Agent) integration
   - Layer management sidebar
+  - Analysis tools for time series and comparisons
   - Responsive UI design with Google styling
 
 ### Backend (FastAPI)
@@ -159,7 +159,7 @@ geogemma/
 
 ### Frontend
 - **React**: UI library
-- **MapLibre GL JS**: Interactive mapping
+- **MapLibre GL JS**: Interactive opensource mapping Library
 - **Google Generative AI SDK**: Gemma/Gemini integration
 - **TailwindCSS**: Styling
 - **Vite**: Build tool and development server
@@ -205,6 +205,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgements
 
+- Google Research & Google DeepMind under the Gemma Academic Program. 
 - Google Earth Engine for satellite imagery and analysis capabilities
 - Google Gemma/Gemini for the conversational AI components and GeoAI Image retrival
 - MapLibre GL JS for the mapping visualization
