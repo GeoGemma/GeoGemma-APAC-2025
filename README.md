@@ -100,6 +100,10 @@ The frontend would look something like this, with the sample prompt applied: **"
 
 <img src="GeoGemma frontend.png" alt="GeoGemma frontend" width="100%"/>
 
+By clicking the Dataset Explorer button, a new window will open, providing an interactive experience with the GEE Data Catalog. Users can explore datasets by selecting specific bands or time ranges. Try searching for keywords like 'DEM', 'climate', or 'Landsat 8 imagery' to begin interacting with the data.
+
+<img src="GEE Dataset explorer.png" alt="GEE dataset explorer" width="100%"/>
+
 
 ## 🏗️ Project Architecture
 
@@ -124,10 +128,6 @@ The frontend would look something like this, with the sample prompt applied: **"
 - **Prompt Analysis**: The Gemma model is configured with prompt engineering instructions to steer its behavior in extracting the analysis type, location, and date range from the user's prompt. These variables are then passed in JSON format to Earth Engine (EE) modules, where the desired function is executed by Google Earth Engine (GEE), and the resulting tile URL is generated and rendered on the frontend.The sample architecture chart visualizes the workflow.
 
 <img src="architecture diagram.png" alt="architecture diagram" width="100%"/>
-
-By clicking the Dataset Explorer button, a new window will open, providing an interactive experience with the GEE Data Catalog. Users can explore datasets by selecting specific bands or time ranges. Try searching for keywords like 'DEM', 'climate', or 'Landsat 8 imagery' to begin interacting with the data.
-
-<img src="GEE Dataset explorer.png" alt="GEE dataset explorer" width="100%"/>
 
 ## 📁 Project Structure
 
